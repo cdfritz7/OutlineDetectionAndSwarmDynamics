@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Sep  9 20:06:34 2019
+
+@author: fritz
+"""
+
+#%%
+import cv2
+import numpy as np
+from matplotlib import pyplot as plt
+
+img = cv2.imread('lena.jpeg',0)
+edges = cv2.Canny(img,100,200)
+
+#%%
+plt.imshow(img)
+plt.title('Matplotlib') #Give this plot a title, 
+                        #so I know it's from matplotlib and not cv2
+plt.show()
+#%%
+plt.imshow(edges)
+plt.title('Matplotlib') #Give this plot a title, 
+                        #so I know it's from matplotlib and not cv2
+plt.show()
