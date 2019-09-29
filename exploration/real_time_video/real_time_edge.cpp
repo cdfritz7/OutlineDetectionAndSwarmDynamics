@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <opencv4/opencv2/opencv.hpp>
 
 int main() {
@@ -9,21 +10,50 @@ int main() {
     std::exit(-1);
   }
 
+  //params for edge detection
   std::vector<cv::Mat> prev_images;
   cv::Mat image;
   cv::Mat cannyResult;
   cv::Mat avg_result;
-  int prev_count = 10; //length of averaging indow
+  int prev_count = 4; //length of averaging indow
   double FPS = 30.0;
+
+  //variables for background masking
+  cv::Ptr<cv::BackgroundSubtractor> pBackSub = cv::createBackgroundSubtractorMOG2();
+  cv::Mat frame;
+  cv::Mat mask;
+
+  //build up our count
+  std::time_t start, current;
+  std::time(&start);
+  std::time(&current);
+  while(current-start < 10){
+    cap >> frame;
+
+    if(frame.empty()){
+      std::cout << "can't read Image from camera";
+      return 0;
+    }
+
+    pBackSub->apply(frame, mask);
+    std::time(&current);
+  }
 
   //read and display camera frames until q is pressed
   while(true){
-    cap >> image;
+    image = cv::Mat::zeros(1,1, CV_64F);
 
-    if(image.empty()) {
+    cap >> frame;
+
+    if(frame.empty()) {
       std::cout << "Can't Read Image From Camera";
       break;
     }
+
+    pBackSub->apply(frame, mask, 0.0);
+    frame.copyTo(image, mask);
+
+    //cv::imshow("camera feed", image);
 
     cv::Canny(image, cannyResult, 50, 125, 3);
     cv::resize(cannyResult, cannyResult, cv::Size(image.cols*3, image.rows*3));
@@ -39,8 +69,10 @@ int main() {
     //find average from window
     if(prev_images.size() < prev_count){
       avg_result = cannyResult.clone();
+      //avg_result = cannyResult; //for white out
     }else{
       avg_result = prev_images[0].clone();
+      //avg_result = prev_images[0]; //for white out
       for(int i = 1; i < prev_images.size(); i++){
         avg_result = avg_result + prev_images[i];
       }
