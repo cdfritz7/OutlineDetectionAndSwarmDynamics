@@ -10,14 +10,6 @@ int main() {
     std::exit(-1);
   }
 
-  //params for edge detection
-  std::vector<cv::Mat> prev_images;
-  cv::Mat image;
-  cv::Mat cannyResult;
-  cv::Mat avg_result;
-  int prev_count = 4; //length of averaging indow
-  double FPS = 30.0;
-
   //variables for background masking
   cv::Ptr<cv::BackgroundSubtractor> pBackSub = cv::createBackgroundSubtractorMOG2();
   cv::Mat frame;
@@ -27,7 +19,7 @@ int main() {
   std::time_t start, current;
   std::time(&start);
   std::time(&current);
-  while(current-start < 10){
+  while(current-start < 20){
     cap >> frame;
 
     if(frame.empty()){
@@ -38,6 +30,14 @@ int main() {
     pBackSub->apply(frame, mask);
     std::time(&current);
   }
+
+  //params for edge detection
+  std::vector<cv::Mat> prev_images;
+  cv::Mat image;
+  cv::Mat cannyResult;
+  cv::Mat avg_result;
+  int prev_count = 6; //length of averaging indow
+  double FPS = 30.0;
 
   //read and display camera frames until q is pressed
   while(true){
@@ -50,10 +50,10 @@ int main() {
       break;
     }
 
-    pBackSub->apply(frame, mask, 0.0);
+    pBackSub->apply(frame, mask, 0.00005);
     frame.copyTo(image, mask);
 
-    //cv::imshow("camera feed", image);
+    cv::imshow("mask", image);
 
     cv::Canny(image, cannyResult, 50, 125, 3);
     cv::resize(cannyResult, cannyResult, cv::Size(image.cols*3, image.rows*3));
