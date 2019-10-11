@@ -100,6 +100,16 @@ class MyFreenectDevice : public Freenect::FreenectDevice {
 		bool m_new_depth_frame;
 };
 
+void filter(cv::Mat mat){
+	  for(int i = 0; i<mat.rows; i++){
+			for(int j = 0; j<mat.cols; j++){
+				int mat_val = mat.data[mat.step[0]*i + mat.step[1]* j + 0];
+				if(mat_val == 255 or mat_val > 110){
+					mat.data[mat.step[0]*i + mat.step[1]* j] = 0;
+				}
+			}
+		}
+}
 
 int main(int argc, char **argv) {
 	bool die(false);
@@ -134,7 +144,8 @@ int main(int argc, char **argv) {
 		device.getDepth(depthMat);
 		cv::imshow("rgb", rgbMat);
 		depthMat.convertTo(depthf, CV_8UC3, 255.0/2048.0);
-		cv::threshold(depthf, depthf, 125, 255, THRESH_BINARY);
+		//cv::threshold(depthf, depthf, 125, 255, THRESH_BINARY);
+		filter(depthf);
 		cv::imshow("depth",depthf);
 		char k = cv::waitKey(5);
 
