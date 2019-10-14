@@ -98,11 +98,11 @@ class MyFreenectDevice : public Freenect::FreenectDevice {
 		bool m_new_depth_frame;
 };
 
-void filter(cv::Mat mat){
+void filter(cv::Mat mat, int threshold){
 	  for(signed i = 0; i<mat.rows; i++){
 			for(signed j = 0; j<mat.cols; j++){
 				int mat_val = mat.data[mat.step[0]*i + mat.step[1]* j + 0];
-				if(mat_val == 255 or mat_val > 110){
+				if(mat_val == 255 or mat_val > threshold){
 					mat.data[mat.step[0]*i + mat.step[1]* j] = 0;
 				}
 			}
@@ -125,6 +125,12 @@ vector<vector<Point>> drop_contours(vector<vector<Point>> contours, int prop){
 	return ret_arr;
 }
 
+/*
+to do -
+apply mask to actual image
+save set of contours for silas to use 
+
+*/
 int main(int argc, char **argv) {
 	bool die(false);
 	string filename("snapshot");
@@ -133,6 +139,8 @@ int main(int argc, char **argv) {
 
 	int width = 640;
 	int height = 480;
+	int contour_drop = 5;
+	int depth_threshold = 110;
 
 	RNG rng(1235);
 
@@ -165,7 +173,7 @@ int main(int argc, char **argv) {
 		device.getDepth(depthMat);
 
 		depthMat.convertTo(depthf, CV_8UC3, 255.0/2048.0);
-		filter(depthf); //remove background
+		filter(depthf, depth_threshold); //remove background
 		/*
 		cv::threshold(depthf, mask, 1, 255, THRESH_BINARY);
 		cv::cvtColor(mask, mask, cv::COLOR_GRAY2BGR);
@@ -174,7 +182,7 @@ int main(int argc, char **argv) {
 		Canny(depthf, cannyResult, 10, 20, 3);
 		findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL,
 									cv::CHAIN_APPROX_TC89_L1, Point(0,0));
-		contours = drop_contours(contours, 4);
+		contours = drop_contours(contours, contour_drop);
 
 		//draw contours
 		Mat drawing = Mat::zeros(cannyResult.size(), CV_8UC3 );
