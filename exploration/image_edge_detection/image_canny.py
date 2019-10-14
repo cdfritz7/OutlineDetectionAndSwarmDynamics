@@ -16,11 +16,13 @@ edges = cv2.Canny(img,100,200)
 
 #%%
 plt.imshow(img)
-plt.title('Matplotlib') #Give this plot a title, 
+plt.title('Matplotlib') #Give this plot a title,
                         #so I know it's from matplotlib and not cv2
 plt.show()
 #%%
 plt.imshow(edges)
-plt.title('Matplotlib') #Give this plot a title, 
+plt.title('Matplotlib') #Give this plot a title,
                         #so I know it's from matplotlib and not cv2
 plt.show()
+
+plt.imsave('./edges.jpg', edges, cmap='gray')
