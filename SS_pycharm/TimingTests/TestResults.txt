@@ -1,0 +1,7 @@
+Pairwise Potential Tests in python
+-test 1
+-300 frames
+-total time spent stepping particle positions: 216.86 seconds
+-289 particles
+-Average of 0.723 seconds per frame
+ 

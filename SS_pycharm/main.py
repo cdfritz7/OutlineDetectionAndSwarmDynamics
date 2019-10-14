@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import time
 
 #gen_particles = [[(x*10, y*10) for x in range(-19,20)] for y in range(-19,20)]
-gen_particles = [[(x*50, y*50) for x in range(-200//50,200//50+1)] for y in range(-200//50,200//50+1)]
+gen_particles = [[(x*25, y*25) for x in range(-200//25, 200//25+1)] for y in range(-200//25, 200//25+1)]
 
 particles = []
 for l in gen_particles:
@@ -15,7 +15,7 @@ for l in gen_particles:
 
 attractors = list((x, x) for x in range(-200,201))
 
-repellent_constant = 2000.0
+repellent_constant = 5000.0
 attraction_constant = 1000.0
 
 
@@ -73,12 +73,15 @@ def plot_sim():
     #plt.show()
 
 def step_all_particles():
+    start_time = time.time()
     for i in range(len(particles)):
         (x,y) = step_particle(particles[i][0], particles[i][1], i)
         particles[i] = (x,y)
+    print("Elapsed time: {} s".format(time.time()-start_time))
 
 file_names = []
-num_frames = 30*25
+num_frames = 30*15
+global_start = time.time()
 for i in range(num_frames):
     plot_sim()
     step_all_particles()
@@ -87,9 +90,11 @@ for i in range(num_frames):
     plt.savefig(file_name, dpi=96)
     print("Saved img {} of {}".format(i,num_frames))
 
+print("Time to produce images {} images: {} s".format(num_frames, time.time()-global_start))
+
 def mk_gif():
     gif_name = 'out.gif'
-    fps = 60
+    fps = 30
     file_list = glob.glob('Images/*.png')
     #print(file_list)
     #list.sort(file_list, key=lambda x: int(x.split('_')[3]))
