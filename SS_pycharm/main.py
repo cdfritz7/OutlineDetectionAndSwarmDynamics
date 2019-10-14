@@ -5,10 +5,17 @@ import math
 import matplotlib.pyplot as plt
 import time
 
-particles = [(-100, 0), (100,0), (0,100), (0,-100)]
+#gen_particles = [[(x*10, y*10) for x in range(-19,20)] for y in range(-19,20)]
+gen_particles = [[(x*25, y*25) for x in range(-200//25, 200//25+1)] for y in range(-200//25, 200//25+1)]
+
+particles = []
+for l in gen_particles:
+    for p in l:
+        particles.append(p)
+
 attractors = list((x, x) for x in range(-200,201))
 
-repellent_constant = 1000.0
+repellent_constant = 5000.0
 attraction_constant = 1000.0
 
 
@@ -39,19 +46,19 @@ def potential(x, y, particle_num):
 def step_particle(x, y, num_particle):
     x_incr = random.randint(-1, 1)
     y_incr = random.randint(-1, 1)
-    print("old loc: {}, {}".format(x, y))
-    print("new loc: {}, {}".format(x+x_incr, y+y_incr))
+    #print("old loc: {}, {}".format(x, y))
+    #print("new loc: {}, {}".format(x+x_incr, y+y_incr))
     if x_incr != 0 or y_incr != 0:
         old_potential = potential(x, y, num_particle)
         new_potential = potential(x+x_incr, y+y_incr, num_particle)
-        print("Old potential: {}".format(old_potential))
-        print("New potential: {}".format(new_potential))
+        #print("Old potential: {}".format(old_potential))
+        #print("New potential: {}".format(new_potential))
         #prob_of_move = 1 - 1.0/(1.0 + math.exp(-(old_potential - new_potential)))
         #print("prob_of_move: {}".format(prob_of_move))
         #print()
         #print()
         if new_potential < old_potential: #random.uniform(0,1) < prob_of_move:
-            print("took move\n")
+            #print("took move\n")
             return x + x_incr, y + y_incr
     return x, y
 
@@ -65,22 +72,25 @@ def plot_sim():
     plt.ylim(top=200,bottom=-200)
     #plt.show()
 
-def reset_sim():
-    particles = [(-100, 0)]
-    attractors = []
-
 def step_all_particles():
+    start_time = time.time()
     for i in range(len(particles)):
         (x,y) = step_particle(particles[i][0], particles[i][1], i)
         particles[i] = (x,y)
+    print("Elapsed time: {} s".format(time.time()-start_time))
 
 file_names = []
-for i in range(30*10):
+num_frames = 30*15
+global_start = time.time()
+for i in range(num_frames):
     plot_sim()
     step_all_particles()
     file_name = "Images/particle_sim_img_{0:03d}.png".format(i)
     file_names.append(file_name)
     plt.savefig(file_name, dpi=96)
+    print("Saved img {} of {}".format(i,num_frames))
+
+print("Time to produce images {} images: {} s".format(num_frames, time.time()-global_start))
 
 def mk_gif():
     gif_name = 'out.gif'
@@ -93,8 +103,3 @@ def mk_gif():
     clip.write_gif(gif_name, fps=fps)
 
 mk_gif()
-
-
-
-
-
