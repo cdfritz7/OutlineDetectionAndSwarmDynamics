@@ -19,7 +19,7 @@ int main() {
   std::time_t start, current;
   std::time(&start);
   std::time(&current);
-  while(current-start < 20){
+  while(current-start < 10){
     cap >> frame;
 
     if(frame.empty()){
@@ -37,7 +37,7 @@ int main() {
   cv::Mat cannyResult;
   cv::Mat avg_result;
   int prev_count = 6; //length of averaging indow
-  double FPS = 30.0;
+  double FPS = 20.0;
 
   //read and display camera frames until q is pressed
   while(true){
@@ -50,12 +50,12 @@ int main() {
       break;
     }
 
-    pBackSub->apply(frame, mask, 0.00005);
+    pBackSub->apply(frame, mask, 0.0);
     frame.copyTo(image, mask);
 
     cv::imshow("mask", image);
 
-    cv::Canny(image, cannyResult, 50, 125, 3);
+    cv::Canny(image, cannyResult, 75, 175, 3);
     cv::resize(cannyResult, cannyResult, cv::Size(image.cols*3, image.rows*3));
 
     //insert into window
