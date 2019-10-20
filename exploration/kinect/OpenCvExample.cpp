@@ -244,7 +244,7 @@ int main(int argc, char **argv) {
 				}
 				f<<']';
 				if(i!=saved_frames.size()-1){
-					f<<':'<<'\n';
+					f<<':';
 				}
 	}
 
