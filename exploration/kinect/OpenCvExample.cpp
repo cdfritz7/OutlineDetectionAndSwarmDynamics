@@ -4,6 +4,7 @@
 #include <cmath>
 #include <pthread.h>
 #include <opencv.hpp>
+#include <fstream>
 
 using namespace cv;
 using namespace std;
@@ -128,8 +129,8 @@ vector<vector<Point>> drop_contours(vector<vector<Point>> contours, int prop){
 /*
 to do -
 apply mask to actual image
-save set of contours for silas to use 
-
+save set of contours for silas to use
+start monitoring 'temperature'
 */
 int main(int argc, char **argv) {
 	bool die(false);
@@ -164,7 +165,10 @@ int main(int argc, char **argv) {
 	device.startVideo();
 	device.startDepth();
 
-	while (!die) {
+	int count = 0;
+	vector<vector<vector<Point>>> saved_frames;
+
+	while (!die && count != 500) {
 		Mat outMat(Size(width, height),CV_8UC3, Scalar(0));
 		vector<vector<Point>> contours;
   	vector<Vec4i> hierarchy;
@@ -183,6 +187,10 @@ int main(int argc, char **argv) {
 		findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL,
 									cv::CHAIN_APPROX_TC89_L1, Point(0,0));
 		contours = drop_contours(contours, contour_drop);
+
+		if(count%5 == 0){
+			saved_frames.push_back(contours);
+		}
 
 		//draw contours
 		Mat drawing = Mat::zeros(cannyResult.size(), CV_8UC3 );
@@ -211,6 +219,33 @@ int main(int argc, char **argv) {
 			cv::imwrite(file.str(),rgbMat);
 			i_snap++;
 		}
+
+		count++;
+	}
+
+  std::ofstream f("video_contours.txt");
+	//loop through video frames
+	for(unsigned i = 0; i!=saved_frames.size(); i++){
+		    f << '[';
+				//loop through contours in frame
+				for(unsigned j = 0; j!=saved_frames[i].size(); j++){
+					    f << '[';
+							//loop through points in contour
+							for(unsigned k = 0; k!=saved_frames[i][j].size(); k++){
+										f << '['<< saved_frames[i][j][k].x << ',' << saved_frames[i][j][k].y << ']';
+										if(k!=saved_frames[i][j].size()-1){
+											f<<',';
+										}
+							}
+							f<<']';
+							if(j!=saved_frames[i].size()-1){
+								f<<'-';
+							}
+				}
+				f<<']';
+				if(i!=saved_frames.size()-1){
+					f<<':'<<'\n';
+				}
 	}
 
 	device.stopVideo();
