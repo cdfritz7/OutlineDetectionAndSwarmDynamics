@@ -28,8 +28,10 @@ class myMutex {
 
 class MyFreenectDevice : public Freenect::FreenectDevice {
 	public:
+			//setting paramater of m_buffer_depth here is meaningless as
+			//it is reset in the FreeNect device constructor in libfreenect.hpp
 		MyFreenectDevice(freenect_context *_ctx, int _index)
-	 		: Freenect::FreenectDevice(_ctx, _index), m_buffer_depth(FREENECT_DEPTH_11BIT),
+	 		: Freenect::FreenectDevice(_ctx, _index), m_buffer_depth(FREENECT_DEPTH_MM),
 			m_buffer_rgb(FREENECT_VIDEO_RGB), m_gamma(2048), m_new_rgb_frame(false),
 			m_new_depth_frame(false), depthMat(Size(640,480),CV_16UC1),
 			rgbMat(Size(640,480), CV_8UC3, Scalar(0)),
@@ -102,7 +104,7 @@ class MyFreenectDevice : public Freenect::FreenectDevice {
 void filter(cv::Mat mat, int threshold){
 	  for(signed i = 0; i<mat.rows; i++){
 			for(signed j = 0; j<mat.cols; j++){
-				int mat_val = mat.data[mat.step[0]*i + mat.step[1]* j + 0];
+				int mat_val = mat.data[mat.step[0]*i + mat.step[1]* j];
 				if(mat_val == 255 or mat_val > threshold){
 					mat.data[mat.step[0]*i + mat.step[1]* j] = 0;
 				}
@@ -141,7 +143,7 @@ int main(int argc, char **argv) {
 	int width = 640;
 	int height = 480;
 	int contour_drop = 5;
-	int depth_threshold = 120;
+	int depth_threshold = 1000; //threshold depth in mm
 
 	RNG rng(1235);
 
@@ -174,8 +176,8 @@ int main(int argc, char **argv) {
 		device.getVideo(rgbMat);
 		device.getDepth(depthMat);
 
-		depthMat.convertTo(depthf, CV_8UC3, 255.0/2048.0);
-		filter(depthf, depth_threshold); //remove background
+		depthMat.convertTo(depthf, CV_8UC3, 255.0/10000.0); //kinect caps out at 10000 mm
+		filter(depthf, depth_threshold*255.0/10000.0); //remove background
 
 		cv::threshold(depthf, mask, 1, 255, THRESH_BINARY);
 		cv::cvtColor(rgbMat, grayMat, cv::COLOR_BGR2GRAY);
