@@ -3,14 +3,14 @@ import time
 from graphics import *
 from copy import copy, deepcopy
 
-MatrixHeight = 50
-MatrixLength = 50
+MatrixHeight = 200
+MatrixLength = 200
 #MoveMin = 0
 MoveMax = 5
-FlowerStrength = 10
+FlowerStrength = 20
 BeeStrength = 10
 RandomNessFactor = 5
-NumBees = 100
+NumBees = 300
 
 def main():
     bee_handle = BeeHandle()
@@ -22,12 +22,12 @@ def main():
         Points.append(Point(bee.x, bee.y))
     for point in Points:
         point.draw(win)
-    flower_x = [25,24,24,25,26,26,26,25,24]
-    flower_y = [25,25,26,26,26,25,24,24,24]
+    #flower_x = [25,24,24,25,26,26,26,25,24]
+    #flower_y = [25,25,26,26,26,25,24,24,24]
     #flower_x = [25]
     #flower_y = [25]
-    #flower_x = [25,25,25,25,25,25,25,25,25,25,0,4,9,14,19,24,29,34,39,44,49]
-    #flower_y = [0,4,9,14,19,24,29,34,39,44,49,25,25,25,25,25,25,25,25,25,25]
+    flower_x = [25,25,25,25,25,25,25,25,25,25,0,4,9,14,19,24,29,34,39,44,49]
+    flower_y = [0,4,9,14,19,24,29,34,39,44,49,25,25,25,25,25,25,25,25,25,25]
     for i in range(len(flower_x)):
         bee_handle.add_flower(flower_x[i], flower_y[i])
     #line = ""
@@ -42,8 +42,8 @@ def main():
         bee_handle.update_movement_matrix()
         bee_handle.update_bees()
         bee_handle.update_bee_coords()
-        #for i in range(len(bee_handle.bee_loc_x)):
-        #    Points[i].move(bee_handle.bee_loc_x[i] - Points[i].getX(), bee_handle.bee_loc_y[i] - Points[i].getY())
+        for i in range(len(bee_handle.bee_loc_x)):
+            Points[i].move(bee_handle.bee_loc_x[i] - Points[i].getX(), bee_handle.bee_loc_y[i] - Points[i].getY())
         time_passed = time.time() - current_time
         current_time = time.time()
         print(1/time_passed)
@@ -184,7 +184,7 @@ class BeeHandle:
             current_value = self.movement_matrix[x][y] + int(rand.uniform(-1 * RandomNessFactor, RandomNessFactor)**2)
             new_value = self.movement_matrix[new_x][new_y] + int(rand.uniform(-1 * RandomNessFactor, RandomNessFactor)**2)
 
-            if new_value > current_value:
+            if new_value >= current_value:
                 bee.move(new_x, new_y)
 
             #dist = int(rand.uniform(MoveMin, MoveMax))
