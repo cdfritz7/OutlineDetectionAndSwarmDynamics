@@ -141,15 +141,14 @@ int main(int argc, char **argv) {
 	int width = 640;
 	int height = 480;
 	int contour_drop = 5;
-	int depth_threshold = 120;
+	int depth_threshold = 110;
 
 	RNG rng(1235);
 
 	Mat depthMat(Size(width,height),CV_16UC1);
 	Mat depthf (Size(width,height),CV_8UC3);
 	Mat mask (Size(width,height), CV_8UC3);
-	Mat rgbMat(Size(width,height), CV_8UC3, Scalar(0));
-	Mat grayMat(Size(width,height), CV_8UC1);
+	Mat rgbMat(Size(width,height),CV_8UC3, Scalar(0));
 	Mat cannyResult;
 
 	// The next two lines must be changed as Freenect::Freenect
@@ -166,8 +165,11 @@ int main(int argc, char **argv) {
 	device.startVideo();
 	device.startDepth();
 
-	while (!die) {
-		Mat outMat(Size(width, height),CV_8UC1, Scalar(0));
+	int count = 0;
+	vector<vector<vector<Point>>> saved_frames;
+
+	while (!die && count != 500) {
+		Mat outMat(Size(width, height),CV_8UC3, Scalar(0));
 		vector<vector<Point>> contours;
   	vector<Vec4i> hierarchy;
 
@@ -176,18 +178,19 @@ int main(int argc, char **argv) {
 
 		depthMat.convertTo(depthf, CV_8UC3, 255.0/2048.0);
 		filter(depthf, depth_threshold); //remove background
-
+		/*
 		cv::threshold(depthf, mask, 1, 255, THRESH_BINARY);
-		cv::cvtColor(rgbMat, grayMat, cv::COLOR_BGR2GRAY);
-		grayMat.copyTo(outMat, mask);
-
+		cv::cvtColor(mask, mask, cv::COLOR_GRAY2BGR);
+		*/
 		//find edges and contours
-    //cv::cvtColor(outMat, grayMat, cv::COLOR_BGR2GRAY);
-		Canny(outMat, cannyResult, 75, 100, 3);
-		//cannyResult.copyTo(outMat, mask);
+		Canny(depthf, cannyResult, 10, 20, 3);
 		findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL,
 									cv::CHAIN_APPROX_TC89_L1, Point(0,0));
 		contours = drop_contours(contours, contour_drop);
+
+		if(count%5 == 0){
+			saved_frames.push_back(contours);
+		}
 
 		//draw contours
 		Mat drawing = Mat::zeros(cannyResult.size(), CV_8UC3 );
@@ -201,7 +204,6 @@ int main(int argc, char **argv) {
 		imshow("rgb", rgbMat);
 		imshow("canny", cannyResult);
 		imshow("contours", drawing);
-		imshow("masked", outMat);
 
 		char k = cv::waitKey(5);
 
@@ -218,7 +220,34 @@ int main(int argc, char **argv) {
 			i_snap++;
 		}
 
+		count++;
 	}
+
+  std::ofstream f("video_contours.txt");
+	//loop through video frames
+	for(unsigned i = 0; i!=saved_frames.size(); i++){
+		    f << '[';
+				//loop through contours in frame
+				for(unsigned j = 0; j!=saved_frames[i].size(); j++){
+					    f << '[';
+							//loop through points in contour
+							for(unsigned k = 0; k!=saved_frames[i][j].size(); k++){
+										f << '['<< saved_frames[i][j][k].x << ',' << saved_frames[i][j][k].y << ']';
+										if(k!=saved_frames[i][j].size()-1){
+											f<<',';
+										}
+							}
+							f<<']';
+							if(j!=saved_frames[i].size()-1){
+								f<<'-';
+							}
+				}
+				f<<']';
+				if(i!=saved_frames.size()-1){
+					f<<':';
+				}
+	}
+
 	device.stopVideo();
 	device.stopDepth();
 	return 0;
