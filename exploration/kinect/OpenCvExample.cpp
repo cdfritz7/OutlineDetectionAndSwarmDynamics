@@ -4,6 +4,7 @@
 #include <cmath>
 #include <pthread.h>
 #include <opencv.hpp>
+#include <fstream>
 
 using namespace cv;
 using namespace std;
@@ -27,8 +28,10 @@ class myMutex {
 
 class MyFreenectDevice : public Freenect::FreenectDevice {
 	public:
+			//setting paramater of m_buffer_depth here is meaningless as
+			//it is reset in the FreeNect device constructor in libfreenect.hpp
 		MyFreenectDevice(freenect_context *_ctx, int _index)
-	 		: Freenect::FreenectDevice(_ctx, _index), m_buffer_depth(FREENECT_DEPTH_11BIT),
+	 		: Freenect::FreenectDevice(_ctx, _index), m_buffer_depth(FREENECT_DEPTH_MM),
 			m_buffer_rgb(FREENECT_VIDEO_RGB), m_gamma(2048), m_new_rgb_frame(false),
 			m_new_depth_frame(false), depthMat(Size(640,480),CV_16UC1),
 			rgbMat(Size(640,480), CV_8UC3, Scalar(0)),
@@ -98,11 +101,11 @@ class MyFreenectDevice : public Freenect::FreenectDevice {
 		bool m_new_depth_frame;
 };
 
-void filter(cv::Mat mat){
+void filter(cv::Mat mat, int threshold){
 	  for(signed i = 0; i<mat.rows; i++){
 			for(signed j = 0; j<mat.cols; j++){
-				int mat_val = mat.data[mat.step[0]*i + mat.step[1]* j + 0];
-				if(mat_val == 255 or mat_val > 110){
+				int mat_val = mat.data[mat.step[0]*i + mat.step[1]* j];
+				if(mat_val == 255 or mat_val > threshold){
 					mat.data[mat.step[0]*i + mat.step[1]* j] = 0;
 				}
 			}
@@ -125,6 +128,12 @@ vector<vector<Point>> drop_contours(vector<vector<Point>> contours, int prop){
 	return ret_arr;
 }
 
+/*
+to do -
+apply mask to actual image
+save set of contours for silas to use
+start monitoring 'temperature'
+*/
 int main(int argc, char **argv) {
 	bool die(false);
 	string filename("snapshot");
@@ -133,13 +142,16 @@ int main(int argc, char **argv) {
 
 	int width = 640;
 	int height = 480;
+	int contour_drop = 5;
+	int depth_threshold = 2001; //threshold depth in mm
 
 	RNG rng(1235);
 
 	Mat depthMat(Size(width,height),CV_16UC1);
 	Mat depthf (Size(width,height),CV_8UC3);
 	Mat mask (Size(width,height), CV_8UC3);
-	Mat rgbMat(Size(width,height),CV_8UC3, Scalar(0));
+	Mat rgbMat(Size(width,height), CV_8UC3, Scalar(0));
+	Mat grayMat(Size(width,height), CV_8UC1);
 	Mat cannyResult;
 
 	// The next two lines must be changed as Freenect::Freenect
@@ -157,24 +169,27 @@ int main(int argc, char **argv) {
 	device.startDepth();
 
 	while (!die) {
-		Mat outMat(Size(width, height),CV_8UC3, Scalar(0));
+		Mat outMat(Size(width, height),CV_8UC1, Scalar(0));
 		vector<vector<Point>> contours;
   	vector<Vec4i> hierarchy;
 
 		device.getVideo(rgbMat);
 		device.getDepth(depthMat);
 
-		depthMat.convertTo(depthf, CV_8UC3, 255.0/2048.0);
-		filter(depthf); //remove background
-		/*
+		depthMat.convertTo(depthf, CV_8UC3, 255.0/10000.0); //kinect caps out at 10000 mm
+		filter(depthf, depth_threshold*255.0/10000.0); //remove background
+
 		cv::threshold(depthf, mask, 1, 255, THRESH_BINARY);
-		cv::cvtColor(mask, mask, cv::COLOR_GRAY2BGR);
-		*/
+		cv::cvtColor(rgbMat, grayMat, cv::COLOR_BGR2GRAY);
+		grayMat.copyTo(outMat, mask);
+
 		//find edges and contours
-		Canny(depthf, cannyResult, 10, 20, 3);
+    //cv::cvtColor(outMat, grayMat, cv::COLOR_BGR2GRAY);
+		Canny(outMat, cannyResult, 75, 100, 3);
+		//cannyResult.copyTo(outMat, mask);
 		findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL,
 									cv::CHAIN_APPROX_TC89_L1, Point(0,0));
-		contours = drop_contours(contours, 4);
+		contours = drop_contours(contours, contour_drop);
 
 		//draw contours
 		Mat drawing = Mat::zeros(cannyResult.size(), CV_8UC3 );
@@ -184,16 +199,19 @@ int main(int argc, char **argv) {
       drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
     }
 
-		imshow("depth",depthf);
-		imshow("rgb", rgbMat);
+		//imshow("depth",depthf);
+		//imshow("rgb", rgbMat);
 		imshow("canny", cannyResult);
-		imshow("contours", drawing);
+		//imshow("contours", drawing);
+		imshow("masked", outMat);
 
 		char k = cv::waitKey(5);
 
 		if( k == 27 ){
-			cv::destroyWindow("rgb");
-			cv::destroyWindow("depth");
+			//cv::destroyWindow("rgb");
+			//cv::destroyWindow("depth");
+			cv::destroyWindow("canny");
+			cv::destroyWindow("masked");
 			break;
 		}
 
@@ -203,8 +221,8 @@ int main(int argc, char **argv) {
 			cv::imwrite(file.str(),rgbMat);
 			i_snap++;
 		}
-	}
 
+	}
 	device.stopVideo();
 	device.stopDepth();
 	return 0;
