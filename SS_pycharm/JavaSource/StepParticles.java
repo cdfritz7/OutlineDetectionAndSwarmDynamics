@@ -37,41 +37,11 @@ public class StepParticles extends Application {
 
 
   public static void main(String[] args) {
-    launch(args); /*
-    System.out.println("Start");
-    String outFileName = "out.txt";
-    generateParticles();
-    generateAttractors();
-    //openParticleFile(outFileName);
-    int numFrames = 10;
-    int fps = 30;
-    for(int i=0; i<numFrames*fps; i++) {
-      double start = System.nanoTime()/1e9;
-      StepAllParticles();
-      //saveParticles(outFileName);
-      System.out.println(System.nanoTime()/1e9-start);
-    }
-    //closeParticleFile(outFileName);
-    System.out.println("End");*/
+    launch(args);
   }
 
   @Override
   public void start(Stage primaryStage) {
-      // primaryStage.setTitle("Hello World!");
-      // Button btn = new Button();
-      // btn.setText("Say 'Hello World'");
-      // btn.setOnAction(new EventHandler<ActionEvent>() {
-      //
-      //     @Override
-      //     public void handle(ActionEvent event) {
-      //         System.out.println("Hello World!");
-      //     }
-      // });
-      //
-      // StackPane root = new StackPane();
-      // root.getChildren().add(btn);
-
-      //
       Group root = new Group();
       Scene s = new Scene(root, xMax-xMin, yMax-yMin);
       primaryStage.setScene(s);
@@ -84,11 +54,20 @@ public class StepParticles extends Application {
       generateParticles();
       drawParticles(gc);
       //gc.fillRect(75,75,100,100);
+      int numThreads = 10;
+      PotentialThread[] threadPool = new PotentialThread[numThreads];
+      System.out.println(particles.length);
+      System.out.println(particles.length/numThreads);
+      for(int i=0; i<numThreads; i++) {
+        if(i!=numThreads-1)
+          threadPool[i] = new PotentialThread(i*particles.length/numThreads, (i+1)*particles.length/numThreads);
+        else
+          threadPool[i] = new PotentialThread(i*particles.length/numThreads, particles.length);
+        //System.out.println("Start: "+i*particles.length/numThreads+" End: "+(i+1)*particles.length/numThreads);
+      }
 
       root.getChildren().add(canvas);
       primaryStage.show();
-      animateParticles(gc);
-      getImg();
       double fps = 60.0;
       new AnimationTimer() {
         long lastTime = 0;
@@ -99,33 +78,15 @@ public class StepParticles extends Application {
                 //System.out.println("fps: "+1/((now-lastTime)/1e9));
                 drawAttractors(gc);
                 drawParticles(gc);
-                stepAllParticles();
+                //stepAllParticles();
+                for(PotentialThread t : threadPool) {
+                  t.run();
+                  //t.join();
+                }
                 lastTime = now;
               }
             }
         }.start();
-  }
-
-  private static int[][] getImg() {
-    /*File file = new File("../../exploration/image_edge_detection/edges.jpg");
-
-        BufferedImage img = null;
-
-        try {
-            img = ImageIO.read(file);
-            int[][] pixels = new int[img.getWidth()][img.getHeight()];
-            Raster raster = img.getData();
-            for( int i = 0; i < img.getWidth(); i++ )
-                for( int j = 0; j < img.getHeight(); j++ ) {
-                    pixels[i][j] = img.getRGB( i, j );
-                    System.out.println(pixels[i][j]);
-                  }
-            return pixels;
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }*/
-        return null;
   }
 
   private static void drawAttractors(GraphicsContext gc) {
@@ -148,17 +109,12 @@ public class StepParticles extends Application {
     gc.fillRect(0,0,xMax,yMax);
   }
 
-  private static void animateParticles(GraphicsContext gc) {
-    //Thread.sleep(1000);
-  }
-
   private static void generateParticles() {
     particles = new Particle[((xMax-xMin)/30+1)*((yMax-yMin)/30+1)];
     int count = 0;
     for(int y = yMin; y <= yMax; y+=30) {
       for(int x = xMin; x <= xMax; x+=30) {
         particles[count] = new Particle(x,y);
-        //next[count] = new Particle(x,y);
         count++;
       }
     }
@@ -234,18 +190,29 @@ public class StepParticles extends Application {
         particles[i] = newPart.get();
       }
     }
-    //particles = next;
   }
-  /*
-  private static void openParticleFile(String fileName) {
+  class PotentialThread extends Thread {
+    private int startIndex;
+    private int endIndex; //exclusive
 
+    @Override
+    public void run() {
+      System.out.println("Thread "+getId()+" started");
+      for(int i = startIndex; i < endIndex; i++) {
+        Optional<Particle> newPart = StepParticle(i);
+        if(newPart.isPresent()) {
+          particles[i] = newPart.get();
+        }
+      }
+      System.out.println("Thread "+getId()+" done");
+    }
+
+    // endIndex is exclusive
+    public PotentialThread(int startIndex, int endIndex) {
+      this.startIndex = startIndex;
+      this.endIndex = endIndex;
+    }
   }
-  private static void saveParticles(String fileName) {
-
-  }
-  private static void closeParticleFile(String fileName) {
-
-  }*/
 }
 
 class Particle {
