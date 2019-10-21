@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
 	int width = 640;
 	int height = 480;
 	int contour_drop = 5;
-	int depth_threshold = 130;
+	int depth_threshold = 120;
 
 	RNG rng(1235);
 

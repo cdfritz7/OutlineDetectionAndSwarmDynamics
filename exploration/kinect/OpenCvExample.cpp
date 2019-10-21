@@ -143,7 +143,7 @@ int main(int argc, char **argv) {
 	int width = 640;
 	int height = 480;
 	int contour_drop = 5;
-	int depth_threshold = 1000; //threshold depth in mm
+	int depth_threshold = 2001; //threshold depth in mm
 
 	RNG rng(1235);
 
@@ -199,17 +199,19 @@ int main(int argc, char **argv) {
       drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
     }
 
-		imshow("depth",depthf);
-		imshow("rgb", rgbMat);
+		//imshow("depth",depthf);
+		//imshow("rgb", rgbMat);
 		imshow("canny", cannyResult);
-		imshow("contours", drawing);
+		//imshow("contours", drawing);
 		imshow("masked", outMat);
 
 		char k = cv::waitKey(5);
 
 		if( k == 27 ){
-			cv::destroyWindow("rgb");
-			cv::destroyWindow("depth");
+			//cv::destroyWindow("rgb");
+			//cv::destroyWindow("depth");
+			cv::destroyWindow("canny");
+			cv::destroyWindow("masked");
 			break;
 		}
 
