@@ -140,41 +140,59 @@ int main(int argc, char **argv) {
 	string suffix(".png");
 	int i_snap(0);
 
+	//various parameters
 	int width = 640;
 	int height = 480;
-	int contour_drop = 5;
-	int depth_threshold = 2001; //threshold depth in mm
+	int down_width = 320; //we resize our input arrays for faster computation
+	int down_height = 240;
+	int final_width = 1280; //final display width and height
+	int final_height = 960;
+	int contour_drop = 5; //we keep 1/<contour_drop> contours
+	int depth_threshold = 1500; //threshold depth in mm
 
+	//variables used for temperature
+	int frame_count = 0;
+	const int window_size = 40; //number of frames to use for temperature smoothing
+	const int diff_window = 20; //numer of frames to use for difference smoothing
+	int average_temp = 0;
+	int average_diff = 0;
+	std::vector<int> past_temps;
+	std::vector<int> past_diffs;
+
+	//seed our random number generator
 	RNG rng(1235);
 
-	Mat depthMat(Size(width,height),CV_16UC1);
-	Mat depthf (Size(width,height),CV_8UC3);
-	Mat mask (Size(width,height), CV_8UC3);
-	Mat rgbMat(Size(width,height), CV_8UC3, Scalar(0));
-	Mat grayMat(Size(width,height), CV_8UC1);
+	//create the matrices we'll use
+	Mat depthIn(Size(width,height),CV_16UC1);
+	Mat rgbIn(Size(width,height), CV_8UC3, Scalar(0));
+	Mat depthMat(Size(down_width,down_height),CV_16UC1);
+	Mat rgbMat(Size(down_width,down_height),CV_8UC3);
+	Mat depthf (Size(down_width,down_height),CV_8UC3);
+	Mat mask (Size(down_width,down_height), CV_8UC3);
+	Mat grayMat(Size(down_width,down_height), CV_8UC1);
 	Mat cannyResult;
-
-	// The next two lines must be changed as Freenect::Freenect
-	// isn't a template but the method createDevice:
-	// Freenect::Freenect<MyFreenectDevice> freenect;
-	// MyFreenectDevice& device = freenect.createDevice(0);
-	// by these two lines:
+	Mat lastFrame(Size(down_width, down_height), CV_8UC3);
+	Mat finalFrame(Size(final_width, final_height), CV_8UC1);
 
 	Freenect::Freenect freenect;
 	MyFreenectDevice& device = freenect.createDevice<MyFreenectDevice>(0);
 
-	namedWindow("rgb",cv::WINDOW_AUTOSIZE);
-	namedWindow("depth",cv::WINDOW_AUTOSIZE);
+	//namedWindow("rgb",cv::WINDOW_AUTOSIZE);
+	//namedWindow("depth",cv::WINDOW_AUTOSIZE);
 	device.startVideo();
 	device.startDepth();
 
 	while (!die) {
+
 		Mat outMat(Size(width, height),CV_8UC1, Scalar(0));
 		vector<vector<Point>> contours;
   	vector<Vec4i> hierarchy;
 
-		device.getVideo(rgbMat);
-		device.getDepth(depthMat);
+		device.getVideo(rgbIn);
+		device.getDepth(depthIn);
+
+		cv::resize(rgbIn, rgbMat, Size(down_width, down_height));
+		cv::resize(depthIn, depthMat, Size(down_width, down_height));
 
 		depthMat.convertTo(depthf, CV_8UC3, 255.0/10000.0); //kinect caps out at 10000 mm
 		filter(depthf, depth_threshold*255.0/10000.0); //remove background
@@ -184,9 +202,8 @@ int main(int argc, char **argv) {
 		grayMat.copyTo(outMat, mask);
 
 		//find edges and contours
-    //cv::cvtColor(outMat, grayMat, cv::COLOR_BGR2GRAY);
-		Canny(outMat, cannyResult, 75, 100, 3);
-		//cannyResult.copyTo(outMat, mask);
+		cv::medianBlur(outMat, outMat, 7);
+		Canny(outMat, cannyResult, 75, 120, 3);
 		findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL,
 									cv::CHAIN_APPROX_TC89_L1, Point(0,0));
 		contours = drop_contours(contours, contour_drop);
@@ -203,7 +220,9 @@ int main(int argc, char **argv) {
 		//imshow("rgb", rgbMat);
 		imshow("canny", cannyResult);
 		//imshow("contours", drawing);
-		imshow("masked", outMat);
+	  imshow("masked", outMat);
+		//cv::resize(cannyResult, finalFrame, Size(final_width, final_height));
+		//imshow("large edges", finalFrame);
 
 		char k = cv::waitKey(5);
 
@@ -221,6 +240,45 @@ int main(int argc, char **argv) {
 			cv::imwrite(file.str(),rgbMat);
 			i_snap++;
 		}
+
+		/*calculation of temperature, takes the average of the differences between
+		the last <window_size> frames, then takes the difference between the current
+		difference and the average difference. Averages the difference over the last
+		<diff_window> frames and prints out the result. This will be the excitement
+		metric
+		*/
+		int temperature = cv::sum(lastFrame-rgbMat)[0];
+		rgbMat.copyTo(lastFrame);
+
+		if(frame_count < window_size){
+			frame_count++;
+			average_temp=average_temp+temperature/window_size;
+			past_temps.push_back(temperature/window_size);
+
+		}else{
+			int new_average = average_temp-*past_temps.begin()+temperature/window_size;
+			int diff = std::abs(temperature-average_temp);
+
+			if(frame_count-window_size < diff_window){
+				frame_count++;
+				average_diff = average_diff+diff/diff_window;
+				past_diffs.push_back(diff/diff_window);
+			}else{
+			  int new_avg_diff = average_diff-*past_diffs.begin()+diff/diff_window;
+				past_diffs = std::vector<int>(past_diffs.begin()+1, past_diffs.end());
+				past_diffs.push_back(diff/diff_window);
+				average_diff = new_avg_diff;
+			}
+
+			past_temps = std::vector<int>(past_temps.begin()+1, past_temps.end());
+			past_temps.push_back(temperature/window_size);
+			average_temp = new_average;
+
+			std::cout<<"\rTemperature is: "<<average_diff;
+			std::cout<<std::flush;
+		}
+
+
 
 	}
 	device.stopVideo();
