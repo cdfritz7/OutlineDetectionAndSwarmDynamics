@@ -8,31 +8,6 @@
 using namespace cv;
 using namespace std;
 
-Mat rotateImage2(Mat src, int angle, bool crop_image){
-    //code heavily inspired by https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c
-
-    // get rotation matrix for rotating the image around its center in pixel coordinates
-    Point2f center((src.cols-1)/2.0, (src.rows-1)/2.0);
-    Mat rot = cv::getRotationMatrix2D(center, angle, 1.0);
-    Size final_size = src.size();
-
-    if(!crop_image){
-      // determine bounding rectangle, center not relevant
-      Rect2f bbox = cv::RotatedRect(cv::Point2f(), src.size(), angle).boundingRect2f();
-
-      // adjust transformation matrix
-      rot.at<double>(0,2) += bbox.width/2.0 - src.cols/2.0;
-      rot.at<double>(1,2) += bbox.height/2.0 - src.rows/2.0;
-
-      //adjust size to new bounding rectangle
-      final_size = bbox.size();
-    }
-
-    Mat dst;
-    warpAffine(src, dst, rot, final_size);
-    return dst;
-}
-
 int main(){
   Mat frame1;
   Mat frame2;
@@ -83,7 +58,7 @@ int main(){
 
     imshow(windowName, background);
 
-    char k = waitKey(100);
+    char k = waitKey(50);
 
     if(k==27){ //if user hits esc
       destroyWindow(windowName);
