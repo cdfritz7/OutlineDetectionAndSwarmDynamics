@@ -1,0 +1,12 @@
+﻿  BeeHandle.cpp
+C:\Users\brand\Documents\GitHub\OutlineDetectionAndSwarmDynamics\swarm_python\BeeProject_Improved\BeeProject_Improved\BeeHandle.h(15,34): warning C4244:  'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\brand\Documents\GitHub\OutlineDetectionAndSwarmDynamics\swarm_python\BeeProject_Improved\BeeProject_Improved\BeeHandle.h(16,30): warning C4244:  'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\brand\Documents\GitHub\OutlineDetectionAndSwarmDynamics\swarm_python\BeeProject_Improved\BeeProject_Improved\BeeHandle.h(16,24): warning C4244:  'initializing': conversion from 'double' to 'const int', possible loss of data
+C:\Users\brand\Documents\GitHub\OutlineDetectionAndSwarmDynamics\swarm_python\BeeProject_Improved\BeeProject_Improved\BeeHandle.h(107,17): warning C4244:  'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\brand\Documents\GitHub\OutlineDetectionAndSwarmDynamics\swarm_python\BeeProject_Improved\BeeProject_Improved\BeeHandle.h(110,1): warning C4244:  '-=': conversion from 'float' to 'int', possible loss of data
+C:\Users\brand\Documents\GitHub\OutlineDetectionAndSwarmDynamics\swarm_python\BeeProject_Improved\BeeProject_Improved\BeeHandle.h(111,1): warning C4244:  '-=': conversion from 'float' to 'int', possible loss of data
+C:\Users\brand\Documents\GitHub\OutlineDetectionAndSwarmDynamics\swarm_python\BeeProject_Improved\BeeProject_Improved\BeeHandle.h(123,17): warning C4244:  'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\brand\Documents\GitHub\OutlineDetectionAndSwarmDynamics\swarm_python\BeeProject_Improved\BeeProject_Improved\BeeHandle.h(132,1): warning C4244:  '+=': conversion from 'float' to 'int', possible loss of data
+C:\Users\brand\Documents\GitHub\OutlineDetectionAndSwarmDynamics\swarm_python\BeeProject_Improved\BeeProject_Improved\BeeHandle.h(133,1): warning C4244:  '+=': conversion from 'float' to 'int', possible loss of data
+C:\Users\brand\Documents\GitHub\OutlineDetectionAndSwarmDynamics\swarm_python\BeeProject_Improved\BeeProject_Improved\BeeHandle.h(140,16): warning C4244:  'initializing': conversion from 'double' to 'float', possible loss of data
+  BeeProject_Improved.vcxproj -> C:\Users\brand\Documents\GitHub\OutlineDetectionAndSwarmDynamics\swarm_python\BeeProject_Improved\Debug\BeeProject_Improved.exe
