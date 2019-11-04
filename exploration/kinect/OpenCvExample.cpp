@@ -147,8 +147,9 @@ int main(int argc, char **argv) {
 	int down_height = 240;
 	int final_width = 1280; //final display width and height
 	int final_height = 960;
-	int contour_drop = 5; //we keep 1/<contour_drop> contours
+	int contour_drop = 2; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
+  double FPS = 30.0;
 
 	//variables used for temperature
 	int frame_count = 0;
@@ -163,7 +164,7 @@ int main(int argc, char **argv) {
 	RNG rng(1235);
 
 	//create the matrices we'll use
-	Mat depthIn(Size(width,height),CV_16UC1);
+	Mat depthIn(Size(width,height), CV_16UC1);
 	Mat rgbIn(Size(width,height), CV_8UC3, Scalar(0));
 	Mat depthMat(Size(down_width,down_height),CV_16UC1);
 	Mat rgbMat(Size(down_width,down_height),CV_8UC3);
@@ -177,8 +178,8 @@ int main(int argc, char **argv) {
 	Freenect::Freenect freenect;
 	MyFreenectDevice& device = freenect.createDevice<MyFreenectDevice>(0);
 
-	//namedWindow("rgb",cv::WINDOW_AUTOSIZE);
-	//namedWindow("depth",cv::WINDOW_AUTOSIZE);
+	namedWindow("canny",cv::WINDOW_AUTOSIZE);
+	namedWindow("masked",cv::WINDOW_AUTOSIZE);
 	device.startVideo();
 	device.startDepth();
 
@@ -219,9 +220,9 @@ int main(int argc, char **argv) {
 		//imshow("depth",depthf);
 		//imshow("rgb", rgbMat);
 		imshow("canny", cannyResult);
-		//imshow("contours", drawing);
+		imshow("contours", drawing);
 	  imshow("masked", outMat);
-		//cv::resize(cannyResult, finalFrame, Size(final_width, final_height));
+	  //cv::resize(cannyResult, finalFrame, Size(final_width, final_height));
 		//imshow("large edges", finalFrame);
 
 		char k = cv::waitKey(5);
