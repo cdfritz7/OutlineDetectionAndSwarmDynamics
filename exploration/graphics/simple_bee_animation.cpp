@@ -13,8 +13,8 @@ int main(){
   Mat frame2;
   frame1 = imread("./bee0.png");
   frame2 = imread("./bee1.png");
-  resize(frame1, frame1, Size(100, 100));
-  resize(frame2, frame2, Size(100, 100));
+  resize(frame1, frame1, Size(75, 75));
+  resize(frame2, frame2, Size(75, 75));
   waitKey(1); // wait for images to load
 
   vector<Mat> frames;
@@ -28,15 +28,15 @@ int main(){
 
   vector<Bee> bees;
 
-  for(unsigned i = 0; i < 20; i++){
-    Bee bee(frames, rand()%1000, rand()%1000, rand()%360);
+  for(unsigned i = 0; i <500; i++){
+    Bee bee(frames, rand()%2000, rand()%2000, rand()%360);
     bees.push_back(bee);
   }
 
   String windowName = "bee";
 
   while(true){
-    Mat background(Size(1000, 1000), CV_8UC3, Scalar(0));
+    Mat background(Size(2000, 2000), CV_8UC3, Scalar(0));
 
     for(unsigned i = 0; i<bees.size(); i++){
       Mat curFrame = bees[i].getCurFrame();
@@ -52,8 +52,8 @@ int main(){
 
       bees[i].rotateClockwise(rand()%20-5);
       bees[i].incrementFrame();
-      bees[i].setX(bees[i].getX()+rand()%25-12);
-      bees[i].setY(bees[i].getY()+rand()%25-12);
+      bees[i].setX(bees[i].getX()+rand()%50-12);
+      bees[i].setY(bees[i].getY()+rand()%50-12);
     }
 
     imshow(windowName, background);
