@@ -13,12 +13,12 @@ class Bee{
     int angle;
     int frame;
     int counter;
-    vector<Mat4b> frames;
-    Mat4b curFrame;
+    vector<Mat> frames;
+    Mat curFrame;
 
   public:
-    Bee(vector<Mat4b> frames);
-    Bee(vector<Mat4b> frames, int x, int y, int angle);
+    Bee(vector<Mat> frames);
+    Bee(vector<Mat> frames, int x, int y, int angle);
     void incrementFrame();
     void rotate(int angle);
     void setAngle(int angle);
@@ -27,5 +27,5 @@ class Bee{
     void setY(int y);
     int getX();
     int getY();
-    Mat4b getCurFrame();
+    Mat getCurFrame();
 };

@@ -5,11 +5,8 @@ LIBS = `pkg-config --libs opencv`
 INCLUDE = -I/usr/local/include/opencv2
 FREE_LIBS = -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_ml -lopencv_video -lopencv_features2d -lopencv_calib3d -lopencv_objdetect -lopencv_video -lopencv_imgcodecs -lopencv_videoio
 
-test:  simple_bee_animation.cpp Bee.cpp
-	$(CXX) $(INCLUDE) $(CFLAGS) $? -o $@  $(LIBS) $(FREE_LIBS)
-
-%.o: %.cpp
-	$(CXX) -c $(CFLAGS) $< -o $@
+test:  simple_bee_animation.cpp
+	g++ $(INCLUDE) $(CFLAGS) $? -o $@  $(LIBS) $(FREE_LIBS)
 
 clean:
 	rm -rf *.o test
