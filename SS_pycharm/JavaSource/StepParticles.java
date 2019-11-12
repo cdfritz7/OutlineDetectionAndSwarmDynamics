@@ -13,15 +13,18 @@ import javafx.scene.*;
 import javafx.scene.paint.*;
 import javafx.scene.canvas.*;
 import javafx.animation.*;
+import javafx.concurrent.Task;
+
 
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
+import javafx.application.Platform;
 
 // Compile with: javac -cp "C:\Program Files\Oracle\JavaFX 2.2 Runtime\lib\jfxrt.jar" StepParticles.java
 // Run with:     java -cp "C:\Program Files\Oracle\JavaFX 2.2 Runtime\lib\jfxrt.jar";. StepParticles
-
+// cd "Dropbox\2019\Fall Coursework\OutlineDetectionAndSwarmDynamics\SS_pycharm\JavaSource"
 public class StepParticles extends Application {
 
   private static Particle[] particles;
@@ -60,9 +63,9 @@ public class StepParticles extends Application {
       System.out.println(particles.length/numThreads);
       for(int i=0; i<numThreads; i++) {
         if(i!=numThreads-1)
-          threadPool[i] = new PotentialThread(i*particles.length/numThreads, (i+1)*particles.length/numThreads);
+          threadPool[i] = /*new Thread(*/new PotentialThread(i*particles.length/numThreads, (i+1)*particles.length/numThreads);//);
         else
-          threadPool[i] = new PotentialThread(i*particles.length/numThreads, particles.length);
+          threadPool[i] = /*new Thread(*/new PotentialThread(i*particles.length/numThreads, particles.length);//);
         //System.out.println("Start: "+i*particles.length/numThreads+" End: "+(i+1)*particles.length/numThreads);
       }
 
@@ -78,11 +81,13 @@ public class StepParticles extends Application {
                 //System.out.println("fps: "+1/((now-lastTime)/1e9));
                 drawAttractors(gc);
                 drawParticles(gc);
-                //stepAllParticles();
+                stepAllParticles();
+                /*
                 for(PotentialThread t : threadPool) {
-                  t.run();
-                  //t.join();
-                }
+                  //t.run();
+                  t.call();
+                  //t.start();
+                }*/
                 lastTime = now;
               }
             }
@@ -120,9 +125,14 @@ public class StepParticles extends Application {
     }
   }
   private static void generateAttractors() {
+    /*
     attractors = new Particle[xMax-xMin+1];
     for(int x = xMin; x <= xMax; x++) {
       attractors[x-xMin] = new Particle(x,x);
+    }*/
+    attractors = new Particle[yMax+1];
+    for(int y = 0; y <= yMax; y++) {
+      attractors[y] = new Particle(xMax/2,y);
     }
   }
   private static double potential(int x, int y, int index) {
@@ -131,7 +141,7 @@ public class StepParticles extends Application {
       if(i != index) {
         int pX = particles[i].x;
         int pY = particles[i].y;
-        double dist = Math.sqrt((pX-x)*(pX-x)+(pY-y)*(pY-y));
+        double dist = dist(pX,pY,x,y);
         if(dist != 0.0) {
           result += repellentConstant/dist;
         }
@@ -143,7 +153,7 @@ public class StepParticles extends Application {
     for(int i = 0; i < attractors.length; i++) {
       int aX = attractors[i].x;
       int aY = attractors[i].y;
-      double dist = Math.sqrt((aX-x)*(aX-x)+(aY-y)*(aY-y));
+      double dist = dist(aX,aY,x,y);
       if(dist != 0.0) {
         result -= attractionConstant/dist;
       }
@@ -153,9 +163,21 @@ public class StepParticles extends Application {
     }
     return result;
   }
+
+  // torodial distance
+  // Assumes xMin, yMin = 0
+  private static double dist(int x1, int y1, int x2, int y2) {
+    if(xMin != 0 || yMin != 0)
+      throw new AssertionError();
+    int dx = Math.abs(x1-x2);
+    int dy = Math.abs(y1-y2);
+    int trueDx = Math.min(Math.abs(xMax-dx), dx);
+    int trueDy = Math.min(Math.abs(yMax-dy), dy);
+    return Math.sqrt(trueDx*trueDx + trueDy*trueDy);
+  }
   private static Optional<Particle> StepParticle(int index) {
     Random rand = new Random();
-    int maxStepSize = 1;
+    int maxStepSize = 2;
     int xIncr = rand.nextInt(maxStepSize*2+1) - maxStepSize; // either -1, 0, or 1
     int yIncr = rand.nextInt(maxStepSize*2+1) - maxStepSize; // either -1, 0, or 1
     if(xIncr==0 && yIncr==0) {
@@ -163,8 +185,9 @@ public class StepParticles extends Application {
     }
     double oldPotential = potential(particles[index].x, particles[index].y, index);
     // enforce torodial bounds
-    int newX = particles[index].x + xIncr;
-    int newY = particles[index].y + yIncr;
+    int newX = mod((particles[index].x + xIncr),xMax);
+    int newY = mod((particles[index].y + yIncr),yMax);
+    /*
     if(newX < 0) {
       newX = xMax - 5;
     }
@@ -176,12 +199,22 @@ public class StepParticles extends Application {
     }
     else if(newY > yMax) {
       newY = 0 + 5;
-    }
+    }*/
     double newPotential = potential(newX, newY, index);
     if(newPotential < oldPotential) {
       return Optional.of(new Particle(newX, newY));
     }
+    else {
+      if((new java.util.Random().nextDouble())>0.5)
+        return Optional.of(new Particle(newX, newY));
+    }
     return Optional.empty();
+  }
+  private static int mod(int d1, int d2) {
+    if(d1>=0)
+      return d1%d2;
+    else
+      return d1%d2+d2;
   }
   private static void stepAllParticles() {
     for(int i = 0; i < particles.length; i++) {
@@ -191,10 +224,21 @@ public class StepParticles extends Application {
       }
     }
   }
-  class PotentialThread extends Thread {
+  class PotentialThread extends Task<Void>/*extends Thread*/ {
     private int startIndex;
     private int endIndex; //exclusive
-
+    @Override protected Void call() {
+      //System.out.println("Thread "+hashCode()+" started");
+      for(int i = startIndex; i < endIndex; i++) {
+        Optional<Particle> newPart = StepParticle(i);
+        if(newPart.isPresent()) {
+          particles[i] = newPart.get();
+        }
+      }
+      //System.out.println("Thread "+hashCode()+" done");
+      return null;
+    }
+    /*
     @Override
     public void run() {
       System.out.println("Thread "+getId()+" started");
@@ -205,7 +249,7 @@ public class StepParticles extends Application {
         }
       }
       System.out.println("Thread "+getId()+" done");
-    }
+    }*/
 
     // endIndex is exclusive
     public PotentialThread(int startIndex, int endIndex) {
