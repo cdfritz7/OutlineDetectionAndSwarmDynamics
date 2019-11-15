@@ -28,12 +28,16 @@ void drawTransparency(Mat frame, Mat transp, int xPos, int yPos) {
     transp.copyTo(frame.rowRange(yPos, yPos + transp.rows).colRange(xPos, xPos + transp.cols), mask);
 }
 
-int main(){
-  int sprite_width = 45;
-  int sprite_height = 45;
+int main(int argc, char* argv[]){
+
+  int sprite_width = 25;
+  int sprite_height = 25;
   int window_width = 1500;
   int window_height = 1500;
   int num_bees = 2000;
+
+  VideoWriter oVideoWriter("./out_bees.mp4", VideoWriter::fourcc('M', 'J', 'P', 'G'),
+                           20, Size(window_width, window_height), true);
 
   Mat frame1;
   Mat frame2;
@@ -110,6 +114,7 @@ int main(){
     imshow(windowName, background);
 
     char k = waitKey(1);
+    //oVideoWriter.write(background);
 
     if(k==27){ //if user hits esc
       destroyWindow(windowName);
