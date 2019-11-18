@@ -2,6 +2,7 @@
 #include <sstream>
 #include <opencv4/opencv2/opencv.hpp>
 
+using namespace cv;
 int main() {
   cv::VideoCapture cap(0);
 
@@ -39,7 +40,7 @@ int main() {
   int prev_count = 6; //length of averaging indow
   double FPS = 20.0;
 
-  //read and display camera frames until q is pressed
+  int last = 0; int key = 0;
   while(true){
     image = cv::Mat::zeros(1,1, CV_64F);
 
@@ -53,9 +54,9 @@ int main() {
     pBackSub->apply(frame, mask, 0.0);
     frame.copyTo(image, mask);
 
-    cv::imshow("mask", image);
+    //cv::imshow("mask", image);
 
-    cv::Canny(image, cannyResult, 75, 175, 3);
+    cv::Canny(image, cannyResult, 125, 150, 3);
     cv::resize(cannyResult, cannyResult, cv::Size(image.cols*3, image.rows*3));
 
     //insert into window
@@ -65,6 +66,7 @@ int main() {
         prev_images.pop_back();
         prev_images.insert(prev_images.begin(), cannyResult/prev_count);
     }
+
 
     //find average from window
     if(prev_images.size() < prev_count){
@@ -78,11 +80,45 @@ int main() {
       }
     }
 
-    cv::imshow("Camera Feed", avg_result);
+    cv::namedWindow("output", cv::WINDOW_NORMAL); //allows for resizable window
+    imshow("output", avg_result);
+
+    cv::namedWindow("colored", cv::WINDOW_NORMAL);
+    cv::Mat convertedImage;
 
     //stop camera if user hits 'esc'
     if(cv::waitKey(1000.0/FPS)==27){
       break;
+    }
+
+    switch(last) {
+	case 49: { //b
+    	    cv::cvtColor(avg_result, avg_result, cv::COLOR_GRAY2BGR);
+    	    convertedImage = avg_result.mul(cv::Scalar(255, 0, 0), 1);
+	    break;
+	}
+	case 50: { //r
+    	    cv::cvtColor(avg_result, avg_result, cv::COLOR_GRAY2BGR);
+    	    convertedImage = avg_result.mul(cv::Scalar(0, 0, 255), 1);
+	    break;
+	}
+	case 51: { //g
+    	    cv::cvtColor(avg_result, avg_result, cv::COLOR_GRAY2BGR);
+    	    convertedImage = avg_result.mul(cv::Scalar(0, 255, 0), 1);
+	    break;
+	}
+	default: {
+    	    cv::cvtColor(avg_result, avg_result, cv::COLOR_GRAY2BGR);
+    	    cv::cvtColor(avg_result, convertedImage, cv::COLOR_BGR2GRAY); //grayscale
+	    break;
+	}
+    }
+    
+    imshow("colored", convertedImage);
+
+    key = cv::waitKey(1000);
+    if (key != -1) {          
+        last = key;  
     }
   }
 
