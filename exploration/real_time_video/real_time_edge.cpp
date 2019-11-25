@@ -12,7 +12,6 @@ int main() {
   }
 
   //variables for background masking
-  cv::Ptr<cv::BackgroundSubtractor> pBackSub = cv::createBackgroundSubtractorMOG2();
   cv::Mat frame;
   cv::Mat mask;
 
@@ -27,8 +26,6 @@ int main() {
       std::cout << "can't read Image from camera";
       return 0;
     }
-
-    pBackSub->apply(frame, mask);
     std::time(&current);
   }
 
@@ -44,15 +41,12 @@ int main() {
   while(true){
     image = cv::Mat::zeros(1,1, CV_64F);
 
-    cap >> frame;
+    cap >> image;
 
     if(frame.empty()) {
       std::cout << "Can't Read Image From Camera";
       break;
     }
-
-    pBackSub->apply(frame, mask, 0.0);
-    frame.copyTo(image, mask);
 
     //cv::imshow("mask", image);
 
@@ -86,11 +80,6 @@ int main() {
     cv::namedWindow("colored", cv::WINDOW_NORMAL);
     cv::Mat convertedImage;
 
-    //stop camera if user hits 'esc'
-    if(cv::waitKey(1000.0/FPS)==27){
-      break;
-    }
-
     switch(last) {
 	case 49: { //b
     	    cv::cvtColor(avg_result, avg_result, cv::COLOR_GRAY2BGR);
@@ -113,13 +102,16 @@ int main() {
 	    break;
 	}
     }
-    
+
     imshow("colored", convertedImage);
 
-    key = cv::waitKey(1000);
-    if (key != -1) {          
-        last = key;  
+    key = cv::waitKey(10);
+    if (key != -1) {
+        last = key;
+    } else if (key == 27) {
+	     break;
     }
+
   }
 
   return 0;
