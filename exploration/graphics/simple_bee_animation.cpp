@@ -30,11 +30,20 @@ void drawTransparency(Mat frame, Mat transp, int xPos, int yPos) {
 
 int main(int argc, char* argv[]){
 
+  //many bees
   int sprite_width = 25;
   int sprite_height = 25;
   int window_width = 1500;
   int window_height = 1500;
   int num_bees = 2000;
+
+  /* //few bees
+  int sprite_width = 300;
+  int sprite_height = 300;
+  int window_width = 1500;
+  int window_height = 1500;
+  int num_bees = 10;
+  */
 
   VideoWriter oVideoWriter("./out_bees.mp4", VideoWriter::fourcc('M', 'J', 'P', 'G'),
                            20, Size(window_width, window_height), true);

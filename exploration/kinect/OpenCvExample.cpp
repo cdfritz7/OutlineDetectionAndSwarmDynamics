@@ -218,9 +218,9 @@ int main(int argc, char **argv) {
     }
 
 		//imshow("depth",depthf);
-		//imshow("rgb", rgbMat);
+		imshow("rgb", rgbMat);
 		imshow("canny", cannyResult);
-		imshow("contours", drawing);
+		//imshow("contours", drawing);
 	  imshow("masked", outMat);
 	  //cv::resize(cannyResult, finalFrame, Size(final_width, final_height));
 		//imshow("large edges", finalFrame);
