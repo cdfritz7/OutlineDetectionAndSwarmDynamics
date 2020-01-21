@@ -57,15 +57,16 @@ class BeeHandle:
                 # while no flower picked and flowers still in consideration:
                 while bee_flower[b_idx] is None and f_idx < len(self.flower_array):
                     flower = self.flower_array[f_idx]
-                    bee_2 = self.bee_array[flower_bee[f_idx]]
 
                     # if there is no other bee that has claimed that flower
-                    if bee_2 is None:
+                    if flower_bee[f_idx] is None:
                         # claim flower
                         bee_flower[b_idx] = f_idx
                         flower_bee[f_idx] = b_idx
                         flower_idx[b_idx] += 1
                     else:
+                        bee_2 = self.bee_array[flower_bee[f_idx]]
+
                         # calculate distance from bee to flower
                         dist_x = flower[0] - bee[0]
                         dist_y = flower[1] - bee[1]
@@ -125,15 +126,45 @@ class BeeHandle:
                 bee_idx[f_idx] = b_idx
 
         for i in range(len(self.bee_array)):
-            flower = self.flower_array[bee_flower[i]]
             bee = self.bee_array[i]
 
-            dist_x = flower[0] - bee[0]
-            dist_y = flower[1] - bee[1]
+            if bee_flower[i] is not None:
+                flower = self.flower_array[bee_flower[i]]
 
-            dist = sqrt(dist_x ** 2 + dist_y ** 2)
+                dist_x = flower[0] - bee[0]
+                dist_y = flower[1] - bee[1]
 
-            if dist > self.MoveMax:
+                dist = sqrt(dist_x ** 2 + dist_y ** 2)
+
+                if dist > self.MoveMax:
+                    # tan = y/x
+                    rads = atan2(dist_y, dist_x) + rand.uniform(-1 * self.RandomNessFactor, self.RandomNessFactor)
+
+                    if not (dist_x == 0 and dist_y == 0):
+                        # x = cos(rads) * z
+                        new_x = bee[0] + int(cos(rads) * self.MoveMax)
+
+                        # y = sin(rads) * z
+                        new_y = bee[1] + int(sin(rads) * self.MoveMax)
+
+                        if new_x < 0 or new_x >= self.MatrixLength:
+                            bee[0] = bee[0] - int(cos(rads) * self.MoveMax)
+                        else:
+                            bee[0] = new_x
+
+                        if new_y < 0 or new_y >= self.MatrixHeight:
+                            bee[1] = bee[1] - int(sin(rads) * self.MoveMax)
+                        else:
+                            bee[1] = new_y
+
+                # if there was a flower in range, move bee to flower
+                else:
+                    bee[0] = self.flower_array[bee_flower[i]][0]
+                    bee[1] = self.flower_array[bee_flower[i]][1]
+            else:
+                dist_x = rand.uniform(-1, 1)
+                dist_y = rand.uniform(-1, 1)
+
                 # tan = y/x
                 rads = atan2(dist_y, dist_x) + rand.uniform(-1 * self.RandomNessFactor, self.RandomNessFactor)
 
@@ -154,12 +185,6 @@ class BeeHandle:
                     else:
                         bee[1] = new_y
 
-            # if there was a flower in range, move bee to flower
-            else:
-                bee[0] = self.flower_array[bee_flower[i]][0]
-                bee[1] = self.flower_array[bee_flower[i]][1]
-
-
 def mk_gif(fps: int = 30):
     gif_name = 'out.gif'
     file_list = glob.glob('Images/*.png')
@@ -170,13 +195,14 @@ def mk_gif(fps: int = 30):
     clip.write_gif(gif_name, fps=fps)
 
 
-def quick_demo(MatrixLength: int = 400, MatrixHeight: int = 400, bee_points: list = None, flower_frames: list = None):
+def quick_demo(MatrixLength: int = 400, MatrixHeight: int = 400, num_bees: int = 800, bee_points: list = None,
+               flower_frames: list = None):
     bee_handle = BeeHandle(MatrixHeight, MatrixLength)
 
     win = GraphWin("Bees", MatrixLength, MatrixHeight)
 
     if bee_points is None:
-        for i in range(800):
+        for i in range(num_bees):
             bee_handle.add_bee()
     else:
         for point in bee_points:
@@ -288,7 +314,7 @@ def read_contours(filename: str):
 
 
 def main():
-    make_gif(700, 500, flower_frames=read_contours("video_contours.txt"))
+    quick_demo(700, 500, 1600, flower_frames=read_contours("video_contours.txt"))
 
 
 if __name__ == "__main__":
