@@ -7,6 +7,7 @@ from math import *
 from graphics import *
 import time
 
+
 class BeeHandle:
     def __init__(self, matrix_height: int = 400, matrix_length: int = 400, move_max: int = 10,
                  random_factor: float = (pi/4)):
@@ -64,6 +65,7 @@ class BeeHandle:
                         bee_flower[b_idx] = f_idx
                         flower_bee[f_idx] = b_idx
                         flower_idx[b_idx] += 1
+                        f_idx = flower_idx[b_idx]
                     else:
                         bee_2 = self.bee_array[flower_bee[f_idx]]
 
@@ -185,6 +187,7 @@ class BeeHandle:
                     else:
                         bee[1] = new_y
 
+
 def mk_gif(fps: int = 30):
     gif_name = 'out.gif'
     file_list = glob.glob('Images/*.png')
@@ -231,6 +234,7 @@ def quick_demo(MatrixLength: int = 400, MatrixHeight: int = 400, num_bees: int =
         bee_handle.update_movement()
         for i in range(len(bee_handle.bee_array)):
             Points[i].move(bee_handle.bee_array[i][0] - Points[i].getX(), bee_handle.bee_array[i][1] - Points[i].getY())
+
 
 def make_gif(MatrixLength: int = 400, MatrixHeight: int = 400, fps: int = 30, time_len = 10, bee_points: list = None,
              flower_frames: list = None):
