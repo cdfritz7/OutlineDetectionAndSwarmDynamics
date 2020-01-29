@@ -4,14 +4,14 @@ FROM ubuntu:18.04
 WORKDIR /project
 
 #add our essential repos to our container
-RUN apt-get update && apt-get upgrade && \
+RUN apt-get -y update && apt-get -y upgrade && \
     apt-get install -y build-essential cmake pkg-config
 
 #make apt-get installs noninteractive - because we won't be able to interact with them
 ENV DEBIAN_FRONTEND=noninteractive
 
 #add opencv to our container https://docs.opencv.org/trunk/d7/d9f/tutorial_linux_install.html
-RUN apt-get install -y git libgtk2.0-dev libavcodec-dev libavformat-dev libswscale-dev
+RUN apt-get -y update & apt-get install --fix-missing -y git libgtk2.0-dev libavcodec-dev libavformat-dev libswscale-dev
 RUN git clone https://github.com/opencv/opencv.git && \
     git clone https://github.com/opencv/opencv_contrib.git && \
     cd ./opencv && \
