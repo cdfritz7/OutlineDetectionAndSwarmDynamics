@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <opencv.hpp>
 #include <fstream>
+#include "BeeHandle.hpp"
 
 using namespace cv;
 using namespace std;
@@ -112,7 +113,7 @@ void filter(cv::Mat mat, int threshold){
 		}
 }
 
-vector<vector<Point>> drop_contours(vector<vector<Point>> contours, int prop){
+vector<vector<Point>> drop_contours_2d(vector<vector<Point>> contours, int prop){
 	vector<vector<Point>> ret_arr;
 
 	for(unsigned i = 0; i < contours.size(); i++){
@@ -128,12 +129,21 @@ vector<vector<Point>> drop_contours(vector<vector<Point>> contours, int prop){
 	return ret_arr;
 }
 
-/*
-to do -
-apply mask to actual image
-save set of contours for silas to use
-start monitoring 'temperature'
-*/
+vector<Point> drop_contours_1d(vector<vector<Point>> contours, int prop){
+	vector<Point> ret_arr;
+
+	for(unsigned i = 0; i < contours.size(); i++){
+		for(unsigned j = 0; j < contours.at(i).size(); j++){
+			if(j%prop == 0){
+				ret_arr.push_back(contours.at(i).at(j));
+			}
+		}
+	}
+
+	return ret_arr;
+
+}
+
 int main(int argc, char **argv) {
 	bool die(false);
 	string filename("snapshot");
@@ -150,6 +160,11 @@ int main(int argc, char **argv) {
 	int contour_drop = 2; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
   double FPS = 30.0;
+
+	//create bee handler for calculating bee dynamics
+	int num_bees = 400;
+	BeeHandle bee_handle(down_width, 240);
+	bee_handle.add_bees(num_bees);
 
 	//variables used for temperature
 	int frame_count = 0;
@@ -187,6 +202,7 @@ int main(int argc, char **argv) {
 
 		Mat outMat(Size(width, height),CV_8UC1, Scalar(0));
 		vector<vector<Point>> contours;
+		vector<Point> flat_contours;
   	vector<Vec4i> hierarchy;
 
 		device.getVideo(rgbIn);
@@ -207,8 +223,35 @@ int main(int argc, char **argv) {
 		cv::Canny(outMat, cannyResult, 75, 120, 3);
 		cv::findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL,
 									cv::CHAIN_APPROX_TC89_L1, Point(0,0));
-		contours = drop_contours(contours, contour_drop);
+		contours = drop_contours_2d(contours, contour_drop);
+		flat_contours = drop_contours_1d(contours, contour_drop);
 
+		//clear flowers for the next state
+		bee_handle.clear_flowers();
+
+		//flatten contours and add as flowers to bee_handle
+		vector<int> flower_x;
+		vector<int> flower_y;
+
+		for(unsigned i = 0; i < flat_contours.size(); i++){
+			flower_x.push_back(flat_contours.at(i).x);
+			flower_y.push_back(flat_contours.at(i).y);
+		}
+
+		bee_handle.add_flowers(flower_x.size(), flower_x, flower_y);
+
+		bee_handle.update_movement_simple();
+
+		//get bee positions
+		vector<Point> bee_positions = bee_handle.getBeeCoordinates();
+
+		for(unsigned i = 0; i < bee_positions.size(); i++){
+			int yPos = bee_positions.at(i).y;
+			int xPos = bee_positions.at(i).x;
+			cannyResult.at<uchar>(yPos%down_height, xPos%down_width) = 255;
+		}
+
+		/*
 		//draw contours
 		Mat drawing = Mat::zeros(cannyResult.size(), CV_8UC3 );
 	  for(unsigned i = 0; i < contours.size(); i++ )
@@ -216,12 +259,13 @@ int main(int argc, char **argv) {
       Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
       drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
     }
+		*/
 
 		//imshow("depth",depthf);
-		imshow("rgb", rgbMat);
+	  //imshow("masked", outMat);
+		//imshow("rgb", rgbMat);
 		imshow("canny", cannyResult);
 		//imshow("contours", drawing);
-	  imshow("masked", outMat);
 	  //cv::resize(cannyResult, finalFrame, Size(final_width, final_height));
 		//imshow("large edges", finalFrame);
 
@@ -231,7 +275,7 @@ int main(int argc, char **argv) {
 			//cv::destroyWindow("rgb");
 			//cv::destroyWindow("depth");
 			cv::destroyWindow("canny");
-			cv::destroyWindow("masked");
+			//cv::destroyWindow("masked");
 			break;
 		}
 
@@ -248,6 +292,7 @@ int main(int argc, char **argv) {
 		<diff_window> frames and prints out the result. This will be the excitement
 		metric
 		*/
+		/*
 		int temperature = cv::sum(lastFrame-rgbMat)[0];
 		rgbMat.copyTo(lastFrame);
 
@@ -278,6 +323,7 @@ int main(int argc, char **argv) {
 			std::cout<<"\rTemperature is: "<<average_diff;
 			std::cout<<std::flush;
 		}
+		*/
 
 
 
