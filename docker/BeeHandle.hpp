@@ -208,8 +208,8 @@ public:
 			float closest_bee_dist = distance(this->bee_array_x.at(i), this->bee_array_y.at(i), closest_bee.x, closest_bee.y);
 			int chance;
 
-			int newX = this->bee_array_x.at(i) + ((rand() % 5)-2);
-			int newY = this->bee_array_y.at(i) + ((rand() % 5)-2);
+			int newX = this->bee_array_x.at(i) + ((rand() % 5)-2)*2;
+			int newY = this->bee_array_y.at(i) + ((rand() % 5)-2)*2;
 
 			float currPotential = find_potential(this->bee_array_x.at(i), this->bee_array_y.at(i));
 			float newPotential = find_potential(newX, newY);

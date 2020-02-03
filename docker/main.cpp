@@ -5,11 +5,11 @@
 #include <pthread.h>
 #include <opencv.hpp>
 #include <fstream>
+#include <chrono>
 #include "BeeHandle.hpp"
 
 using namespace cv;
 using namespace std;
-
 
 class myMutex {
 	public:
@@ -150,6 +150,14 @@ int main(int argc, char **argv) {
 	string suffix(".png");
 	int i_snap(0);
 
+	chrono::time_point<std::chrono::high_resolution_clock> time_start;
+	chrono::time_point<std::chrono::high_resolution_clock> time_stop;
+	chrono::time_point<std::chrono::high_resolution_clock> bee_start;
+	chrono::time_point<std::chrono::high_resolution_clock> bee_stop;
+	int bee_total;
+	int iterations;
+	bool time_it = false;
+
 	//various parameters
 	int width = 640;
 	int height = 480;
@@ -162,7 +170,7 @@ int main(int argc, char **argv) {
   double FPS = 30.0;
 
 	//create bee handler for calculating bee dynamics
-	int num_bees = 400;
+	int num_bees = 500;
 	BeeHandle bee_handle(down_width, 240);
 	bee_handle.add_bees(num_bees);
 
@@ -194,9 +202,15 @@ int main(int argc, char **argv) {
 	MyFreenectDevice& device = freenect.createDevice<MyFreenectDevice>(0);
 
 	cv::namedWindow("canny",cv::WINDOW_AUTOSIZE);
-	cv::namedWindow("masked",cv::WINDOW_AUTOSIZE);
 	device.startVideo();
 	device.startDepth();
+
+	if(argc > 1 && String(argv[1]).compare("time")==0){
+		time_it = true;
+		bee_total = 0;
+		time_start = chrono::high_resolution_clock::now();
+		iterations = 0;
+	}
 
 	while (!die) {
 
@@ -226,6 +240,10 @@ int main(int argc, char **argv) {
 		contours = drop_contours_2d(contours, contour_drop);
 		flat_contours = drop_contours_1d(contours, contour_drop);
 
+		if(time_it){
+			bee_start = chrono::high_resolution_clock::now();
+		}
+
 		//clear flowers for the next state
 		bee_handle.clear_flowers();
 
@@ -251,6 +269,12 @@ int main(int argc, char **argv) {
 			cannyResult.at<uchar>(yPos%down_height, xPos%down_width) = 255;
 		}
 
+		if(time_it){
+			bee_stop = chrono::high_resolution_clock::now();
+			auto temp_bee_total = chrono::duration_cast<chrono::microseconds>(bee_stop - bee_start);
+			bee_total += (int)temp_bee_total.count();
+		}
+
 		/*
 		//draw contours
 		Mat drawing = Mat::zeros(cannyResult.size(), CV_8UC3 );
@@ -261,10 +285,12 @@ int main(int argc, char **argv) {
     }
 		*/
 
+		cv::resize(cannyResult, finalFrame, Size(final_width, final_height));
+
 		//imshow("depth",depthf);
 	  //imshow("masked", outMat);
 		//imshow("rgb", rgbMat);
-		imshow("canny", cannyResult);
+		imshow("canny", finalFrame);
 		//imshow("contours", drawing);
 	  //cv::resize(cannyResult, finalFrame, Size(final_width, final_height));
 		//imshow("large edges", finalFrame);
@@ -324,10 +350,20 @@ int main(int argc, char **argv) {
 			std::cout<<std::flush;
 		}
 		*/
-
-
+		if(time_it)
+			iterations++;
 
 	}
+
+	if(time_it){
+		time_stop = chrono::high_resolution_clock::now();
+		auto total = chrono::duration_cast<chrono::microseconds>(time_stop-time_start);
+		cout<<"frames: "<<iterations<<endl;
+		cout<<"Frames per second: "<<(float)iterations/(total.count()/1000000.0)<<endl;
+		cout<<"Percentage bee module: "<<100*(float)bee_total/total.count()<<"%\n";
+		cout<<"Percentage edge module: "<<100*(float)(total.count()-bee_total)/total.count()<<"%\n";
+	}
+
 	device.stopVideo();
 	device.stopDepth();
 	return 0;
