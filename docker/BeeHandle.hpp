@@ -179,8 +179,8 @@ public:
 
 	float find_potential(int x, int y){
 		float pot = 0.0;
-		int resistance_str = 1;
-		int attraction_str = 100;
+		float resistance_str = 5;
+		float attraction_str = 100;
 
 		for(int i = 0; i < this->num_bees; i++){
 			float dist = distance(x, y, this->bee_array_x.at(i), this->bee_array_y.at(i));
@@ -200,7 +200,6 @@ public:
 	}
 
 	void update_movement_simple(){
-
 		for(int i = 0; i < this->num_bees; i++){
 			cv::Point closest_flower = find_closest_flower(this->bee_array_x.at(i), this->bee_array_y.at(i));
 			cv::Point closest_bee = find_closest_bee(this->bee_array_x.at(i), this->bee_array_y.at(i));
@@ -208,8 +207,8 @@ public:
 			float closest_bee_dist = distance(this->bee_array_x.at(i), this->bee_array_y.at(i), closest_bee.x, closest_bee.y);
 			int chance;
 
-			int newX = this->bee_array_x.at(i) + ((rand() % 5)-2)*2;
-			int newY = this->bee_array_y.at(i) + ((rand() % 5)-2)*2;
+			int newX = this->bee_array_x.at(i) + ((rand() % 5)-2)*4;
+			int newY = this->bee_array_y.at(i) + ((rand() % 5)-2)*4;
 
 			float currPotential = find_potential(this->bee_array_x.at(i), this->bee_array_y.at(i));
 			float newPotential = find_potential(newX, newY);

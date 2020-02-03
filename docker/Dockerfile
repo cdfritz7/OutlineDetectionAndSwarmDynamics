@@ -23,6 +23,9 @@ RUN git clone https://github.com/opencv/opencv.git && \
     apt-get install -y libopencv-dev && \
     apt-get install -y freenect #add libfreenect
 
+#add gdb
+RUN apt-get install -y gdb valgrind
+
 #copy over all the files in the current directory to our container
 #anything after this line will be rerun at every build
 ADD . /project

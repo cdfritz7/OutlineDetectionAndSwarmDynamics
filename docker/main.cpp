@@ -150,14 +150,6 @@ int main(int argc, char **argv) {
 	string suffix(".png");
 	int i_snap(0);
 
-	chrono::time_point<std::chrono::high_resolution_clock> time_start;
-	chrono::time_point<std::chrono::high_resolution_clock> time_stop;
-	chrono::time_point<std::chrono::high_resolution_clock> bee_start;
-	chrono::time_point<std::chrono::high_resolution_clock> bee_stop;
-	int bee_total;
-	int iterations;
-	bool time_it = false;
-
 	//various parameters
 	int width = 640;
 	int height = 480;
@@ -165,12 +157,12 @@ int main(int argc, char **argv) {
 	int down_height = 240;
 	int final_width = 1280; //final display width and height
 	int final_height = 960;
-	int contour_drop = 2; //we keep 1/<contour_drop> contours
+	int contour_drop = 1; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
   double FPS = 30.0;
 
 	//create bee handler for calculating bee dynamics
-	int num_bees = 500;
+	int num_bees = 600;
 	BeeHandle bee_handle(down_width, 240);
 	bee_handle.add_bees(num_bees);
 
@@ -196,25 +188,34 @@ int main(int argc, char **argv) {
 	Mat grayMat(Size(down_width,down_height), CV_8UC1);
 	Mat cannyResult;
 	Mat lastFrame(Size(down_width, down_height), CV_8UC3);
-	Mat finalFrame(Size(final_width, final_height), CV_8UC1);
 
 	Freenect::Freenect freenect;
 	MyFreenectDevice& device = freenect.createDevice<MyFreenectDevice>(0);
 
-	cv::namedWindow("canny",cv::WINDOW_AUTOSIZE);
+	cv::namedWindow("canny",cv::WINDOW_NORMAL);
 	device.startVideo();
 	device.startDepth();
+
+	//set variables for timing
+	chrono::time_point<std::chrono::high_resolution_clock> time_start;
+	chrono::time_point<std::chrono::high_resolution_clock> time_stop;
+	chrono::time_point<std::chrono::high_resolution_clock> bee_start;
+	chrono::time_point<std::chrono::high_resolution_clock> bee_stop;
+	int bee_total;
+	int iterations = 0;
+	bool time_it = false;
 
 	if(argc > 1 && String(argv[1]).compare("time")==0){
 		time_it = true;
 		bee_total = 0;
 		time_start = chrono::high_resolution_clock::now();
-		iterations = 0;
 	}
 
 	while (!die) {
 
 		Mat outMat(Size(width, height),CV_8UC1, Scalar(0));
+		Mat finalFrame(Size(down_width, down_height), CV_8UC1, Scalar(0));
+
 		vector<vector<Point>> contours;
 		vector<Point> flat_contours;
   	vector<Vec4i> hierarchy;
@@ -234,12 +235,13 @@ int main(int argc, char **argv) {
 
 		//find edges and contours
 		cv::medianBlur(outMat, outMat, 7);
-		cv::Canny(outMat, cannyResult, 75, 120, 3);
+		cv::Canny(outMat, cannyResult, 50, 100, 3);
 		cv::findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL,
 									cv::CHAIN_APPROX_TC89_L1, Point(0,0));
 		contours = drop_contours_2d(contours, contour_drop);
 		flat_contours = drop_contours_1d(contours, contour_drop);
 
+		//start timer for bee module if timing is enabled
 		if(time_it){
 			bee_start = chrono::high_resolution_clock::now();
 		}
@@ -266,9 +268,10 @@ int main(int argc, char **argv) {
 		for(unsigned i = 0; i < bee_positions.size(); i++){
 			int yPos = bee_positions.at(i).y;
 			int xPos = bee_positions.at(i).x;
-			cannyResult.at<uchar>(yPos%down_height, xPos%down_width) = 255;
+			finalFrame.at<uchar>(yPos%down_height, xPos%down_width) = 255;
 		}
 
+		//end timer for bees if timing is enabled
 		if(time_it){
 			bee_stop = chrono::high_resolution_clock::now();
 			auto temp_bee_total = chrono::duration_cast<chrono::microseconds>(bee_stop - bee_start);
@@ -285,7 +288,7 @@ int main(int argc, char **argv) {
     }
 		*/
 
-		cv::resize(cannyResult, finalFrame, Size(final_width, final_height));
+		//cv::resize(cannyResult, finalFrame, Size(final_width, final_height));
 
 		//imshow("depth",depthf);
 	  //imshow("masked", outMat);
@@ -350,8 +353,12 @@ int main(int argc, char **argv) {
 			std::cout<<std::flush;
 		}
 		*/
-		if(time_it)
-			iterations++;
+
+		iterations++;
+
+		if(iterations == 10){
+			break;
+		}
 
 	}
 
