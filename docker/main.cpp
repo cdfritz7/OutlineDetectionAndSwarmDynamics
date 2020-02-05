@@ -6,7 +6,7 @@
 #include <opencv.hpp>
 #include <fstream>
 #include <chrono>
-#include "BeeHandle.hpp"
+#include "BeeHandle_simple.hpp"
 
 using namespace cv;
 using namespace std;
@@ -163,8 +163,8 @@ int main(int argc, char **argv) {
 
 	//create bee handler for calculating bee dynamics
 	int num_bees = 600;
-	BeeHandle bee_handle(down_width, 240);
-	bee_handle.add_bees(num_bees);
+	BeeHandle bee_handle = BeeHandle();
+	bee_handle.add_bees(num_bees, down_width, down_height);
 
 	//variables used for temperature
 	int frame_count = 0;
@@ -188,6 +188,11 @@ int main(int argc, char **argv) {
 	Mat grayMat(Size(down_width,down_height), CV_8UC1);
 	Mat cannyResult;
 	Mat lastFrame(Size(down_width, down_height), CV_8UC3);
+
+	vector<vector<Point>> contours;
+	vector<Point> flat_contours;
+	vector<Vec4i> hierarchy;
+	vector<Point> bee_positions;
 
 	Freenect::Freenect freenect;
 	MyFreenectDevice& device = freenect.createDevice<MyFreenectDevice>(0);
@@ -216,9 +221,9 @@ int main(int argc, char **argv) {
 		Mat outMat(Size(width, height),CV_8UC1, Scalar(0));
 		Mat finalFrame(Size(down_width, down_height), CV_8UC1, Scalar(0));
 
-		vector<vector<Point>> contours;
-		vector<Point> flat_contours;
-  	vector<Vec4i> hierarchy;
+		contours.clear();
+		flat_contours.clear();
+  	hierarchy.clear();
 
 		device.getVideo(rgbIn);
 		device.getDepth(depthIn);
@@ -250,20 +255,12 @@ int main(int argc, char **argv) {
 		bee_handle.clear_flowers();
 
 		//flatten contours and add as flowers to bee_handle
-		vector<int> flower_x;
-		vector<int> flower_y;
-
-		for(unsigned i = 0; i < flat_contours.size(); i++){
-			flower_x.push_back(flat_contours.at(i).x);
-			flower_y.push_back(flat_contours.at(i).y);
-		}
-
-		bee_handle.add_flowers(flower_x.size(), flower_x, flower_y);
-
-		bee_handle.update_movement_simple();
+		bee_handle.add_flowers(flat_contours);
+		bee_handle.update_movement(4);
 
 		//get bee positions
-		vector<Point> bee_positions = bee_handle.getBeeCoordinates();
+		bee_positions.clear();
+		bee_positions = bee_handle.get_bees();
 
 		for(unsigned i = 0; i < bee_positions.size(); i++){
 			int yPos = bee_positions.at(i).y;
@@ -355,10 +352,6 @@ int main(int argc, char **argv) {
 		*/
 
 		iterations++;
-
-		if(iterations == 10){
-			break;
-		}
 
 	}
 

@@ -12,4 +12,4 @@ main:  main.cpp
 	$(CXX) -c $(CFLAGS) $< -o $@
 
 clean:
-	rm -rf *.o test
+	rm -rf *.o main

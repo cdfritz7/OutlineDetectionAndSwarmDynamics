@@ -135,7 +135,7 @@ public:
 	}
 
 	void update_movement_test(){
-		for(int i = 0; i < this->num_bees; i++){
+		for(int i = 0; i < this->bee_array_x.size(); i++){
 			if(rand()%10 < 2)
 				this->bee_array_x.at(i) = this->bee_array_x.at(i)+1%this->MatrixLength;
 		}
@@ -149,7 +149,7 @@ public:
 		float min_dist = 1000000000.0;
 		cv::Point closest = cv::Point(0, 0);
 
-		for(int i = 0; i < this->num_flowers; i++){
+		for(int i = 0; i < this->flower_array_x.size(); i++){
 			float dist = distance(x, y, this->flower_array_x.at(i), this->flower_array_y.at(i));
 			if(dist < min_dist){
 				min_dist = dist;
@@ -165,7 +165,7 @@ public:
 		float min_dist = 1000000000.0;
 		cv::Point closest = cv::Point(0, 0);
 
-		for(int i = 0; i < this->num_bees; i++){
+		for(int i = 0; i < this->bee_array_x.size(); i++){
 			float dist = distance(x, y, this->bee_array_x.at(i), this->bee_array_y.at(i));
 			if(dist < min_dist){
 				min_dist = dist;
@@ -179,19 +179,20 @@ public:
 
 	float find_potential(int x, int y){
 		float pot = 0.0;
-		float resistance_str = 5;
-		float attraction_str = 100;
+		double resistance_str = 10;
+		double attraction_str = 100;
 
-		for(int i = 0; i < this->num_bees; i++){
+		for(unsigned i = 0; i < this->bee_array_x.size(); i++){
 			float dist = distance(x, y, this->bee_array_x.at(i), this->bee_array_y.at(i));
 			if(dist != 0.0){
 				pot -= resistance_str/dist;
 			}else{
-				pot -= resistance_str/1000;
+				cout<<pot<<endl;
+				pot -= resistance_str*2;
 			}
 		}
 
-		for(int i = 0; i < this->num_flowers; i++){
+		for(unsigned i = 0; i < this->flower_array_x.size(); i++){
 			float dist = distance(x, y, this->flower_array_x.at(i), this->flower_array_y.at(i));
 			pot += attraction_str/dist;
 		}
