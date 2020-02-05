@@ -33,10 +33,12 @@ class MyFreenectDevice : public Freenect::FreenectDevice {
 			//it is reset in the FreeNect device constructor in libfreenect.hpp
 		MyFreenectDevice(freenect_context *_ctx, int _index)
 	 		: Freenect::FreenectDevice(_ctx, _index), m_buffer_depth(FREENECT_DEPTH_MM),
-			m_buffer_rgb(FREENECT_VIDEO_RGB), m_gamma(2048), m_new_rgb_frame(false),
-			m_new_depth_frame(false), depthMat(Size(640,480),CV_16UC1),
+			m_buffer_rgb(FREENECT_VIDEO_RGB), m_gamma(2048),
+			depthMat(Size(640,480),CV_16UC1),
 			rgbMat(Size(640,480), CV_8UC3, Scalar(0)),
-			ownMat(Size(640,480), CV_8UC3, Scalar(0)) {
+			ownMat(Size(640,480), CV_8UC3, Scalar(0)),
+			m_new_rgb_frame(false),
+			m_new_depth_frame(false) {
 
 			for( unsigned int i = 0 ; i < 2048 ; i++) {
 				float v = i/2048.0;
@@ -141,32 +143,26 @@ vector<Point> drop_contours_1d(vector<vector<Point>> contours, int prop){
 	}
 
 	return ret_arr;
-
 }
 
 int main(int argc, char **argv) {
 	bool die(false);
-	string filename("snapshot");
-	string suffix(".png");
-	int i_snap(0);
 
 	//various parameters
 	int width = 640;
 	int height = 480;
 	int down_width = 320; //we resize our input arrays for faster computation
 	int down_height = 240;
-	int final_width = 1280; //final display width and height
-	int final_height = 960;
-	int contour_drop = 1; //we keep 1/<contour_drop> contours
+	int contour_drop = 6; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
-  double FPS = 30.0;
 
 	//create bee handler for calculating bee dynamics
-	int num_bees = 600;
+	int num_bees = 800;
 	BeeHandle bee_handle = BeeHandle();
 	bee_handle.add_bees(num_bees, down_width, down_height);
 
 	//variables used for temperature
+	/*
 	int frame_count = 0;
 	const int window_size = 40; //number of frames to use for temperature smoothing
 	const int diff_window = 20; //numer of frames to use for difference smoothing
@@ -174,6 +170,7 @@ int main(int argc, char **argv) {
 	int average_diff = 0;
 	std::vector<int> past_temps;
 	std::vector<int> past_diffs;
+	*/
 
 	//seed our random number generator
 	RNG rng(1235);
@@ -181,13 +178,15 @@ int main(int argc, char **argv) {
 	//create the matrices we'll use
 	Mat depthIn(Size(width,height), CV_16UC1);
 	Mat rgbIn(Size(width,height), CV_8UC3, Scalar(0));
-	Mat depthMat(Size(down_width,down_height),CV_16UC1);
-	Mat rgbMat(Size(down_width,down_height),CV_8UC3);
+	Mat depth_down(Size(down_width,down_height),CV_16UC1);
+	Mat rgb_down(Size(down_width,down_height),CV_8UC3);
 	Mat depthf (Size(down_width,down_height),CV_8UC3);
 	Mat mask (Size(down_width,down_height), CV_8UC3);
 	Mat grayMat(Size(down_width,down_height), CV_8UC1);
 	Mat cannyResult;
 	Mat lastFrame(Size(down_width, down_height), CV_8UC3);
+	Mat outMat(Size(width, height),CV_8UC1, Scalar(0));
+	Mat finalFrame(Size(down_width, down_height), CV_8UC1, Scalar(0));
 
 	vector<vector<Point>> contours;
 	vector<Point> flat_contours;
@@ -197,7 +196,7 @@ int main(int argc, char **argv) {
 	Freenect::Freenect freenect;
 	MyFreenectDevice& device = freenect.createDevice<MyFreenectDevice>(0);
 
-	cv::namedWindow("canny",cv::WINDOW_NORMAL);
+	cv::namedWindow("Bees",cv::WINDOW_NORMAL);
 	device.startVideo();
 	device.startDepth();
 
@@ -210,16 +209,23 @@ int main(int argc, char **argv) {
 	int iterations = 0;
 	bool time_it = false;
 
+	//start timing
 	if(argc > 1 && String(argv[1]).compare("time")==0){
 		time_it = true;
 		bee_total = 0;
 		time_start = chrono::high_resolution_clock::now();
 	}
 
+	//variables for recording video, just press p
+	chrono::time_point<std::chrono::high_resolution_clock> video_time_start;
+	chrono::time_point<std::chrono::high_resolution_clock> video_time_end;
+	bool is_recording = false;
+	VideoWriter video("outcpp.avi",VideoWriter::fourcc('M','J','P','G'),10, Size(down_width,down_height));
+
 	while (!die) {
 
-		Mat outMat(Size(width, height),CV_8UC1, Scalar(0));
-		Mat finalFrame(Size(down_width, down_height), CV_8UC1, Scalar(0));
+		outMat = Scalar(0);
+		finalFrame = Scalar(0);
 
 		contours.clear();
 		flat_contours.clear();
@@ -228,14 +234,16 @@ int main(int argc, char **argv) {
 		device.getVideo(rgbIn);
 		device.getDepth(depthIn);
 
-		cv::resize(rgbIn, rgbMat, Size(down_width, down_height));
-		cv::resize(depthIn, depthMat, Size(down_width, down_height));
+		//resize input image and depth for decreased computation
+		cv::resize(rgbIn, rgb_down, Size(down_width, down_height));
+		cv::resize(depthIn, depth_down, Size(down_width, down_height));
 
-		depthMat.convertTo(depthf, CV_8UC3, 255.0/10000.0); //kinect caps out at 10000 mm
+
+		depth_down.convertTo(depthf, CV_8UC3, 255.0/10000.0); //kinect caps out at 10000 mm
 		filter(depthf, depth_threshold*255.0/10000.0); //remove background
 
 		cv::threshold(depthf, mask, 1, 255, THRESH_BINARY);
-		cv::cvtColor(rgbMat, grayMat, cv::COLOR_BGR2GRAY);
+		cv::cvtColor(rgb_down, grayMat, cv::COLOR_BGR2GRAY);
 		grayMat.copyTo(outMat, mask);
 
 		//find edges and contours
@@ -243,7 +251,7 @@ int main(int argc, char **argv) {
 		cv::Canny(outMat, cannyResult, 50, 100, 3);
 		cv::findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL,
 									cv::CHAIN_APPROX_TC89_L1, Point(0,0));
-		contours = drop_contours_2d(contours, contour_drop);
+		//contours = drop_contours_2d(contours, contour_drop);
 		flat_contours = drop_contours_1d(contours, contour_drop);
 
 		//start timer for bee module if timing is enabled
@@ -256,7 +264,7 @@ int main(int argc, char **argv) {
 
 		//flatten contours and add as flowers to bee_handle
 		bee_handle.add_flowers(flat_contours);
-		bee_handle.update_movement(4);
+		bee_handle.update_movement(3);
 
 		//get bee positions
 		bee_positions.clear();
@@ -266,6 +274,9 @@ int main(int argc, char **argv) {
 			int yPos = bee_positions.at(i).y;
 			int xPos = bee_positions.at(i).x;
 			finalFrame.at<uchar>(yPos%down_height, xPos%down_width) = 255;
+			finalFrame.at<uchar>((yPos+1)%down_height, (xPos)%down_width) = 255;
+			finalFrame.at<uchar>((yPos)%down_height, (xPos+1)%down_width) = 255;
+			finalFrame.at<uchar>((yPos+1)%down_height, (xPos+1)%down_width) = 255;
 		}
 
 		//end timer for bees if timing is enabled
@@ -274,6 +285,7 @@ int main(int argc, char **argv) {
 			auto temp_bee_total = chrono::duration_cast<chrono::microseconds>(bee_stop - bee_start);
 			bee_total += (int)temp_bee_total.count();
 		}
+
 
 		/*
 		//draw contours
@@ -285,31 +297,27 @@ int main(int argc, char **argv) {
     }
 		*/
 
-		//cv::resize(cannyResult, finalFrame, Size(final_width, final_height));
-
-		//imshow("depth",depthf);
-	  //imshow("masked", outMat);
-		//imshow("rgb", rgbMat);
-		imshow("canny", finalFrame);
-		//imshow("contours", drawing);
-	  //cv::resize(cannyResult, finalFrame, Size(final_width, final_height));
-		//imshow("large edges", finalFrame);
+		imshow("Bees", 255-finalFrame);
 
 		char k = cv::waitKey(5);
-
 		if( k == 27 ){
-			//cv::destroyWindow("rgb");
-			//cv::destroyWindow("depth");
-			cv::destroyWindow("canny");
-			//cv::destroyWindow("masked");
+			cv::destroyWindow("Bees");
 			break;
 		}
 
-		if( k == 8 ) {
-			std::ostringstream file;
-			file << filename << i_snap << suffix;
-			cv::imwrite(file.str(),rgbMat);
-			i_snap++;
+		//checks if we are recording and saves frame
+		if(is_recording){
+			video.write(255-finalFrame);
+			video_time_end = chrono::high_resolution_clock::now();
+			auto video_total = chrono::duration_cast<chrono::seconds>(time_stop-time_start);
+			if((int)video_total.count()>=30){
+				is_recording = false;
+			}
+		}
+
+		if(k == 80 && is_recording==false){
+			is_recording = true;
+			video_time_start = chrono::high_resolution_clock::now();
 		}
 
 		/*calculation of temperature, takes the average of the differences between
@@ -352,7 +360,6 @@ int main(int argc, char **argv) {
 		*/
 
 		iterations++;
-
 	}
 
 	if(time_it){
@@ -366,5 +373,18 @@ int main(int argc, char **argv) {
 
 	device.stopVideo();
 	device.stopDepth();
+	finalFrame.release();
+	outMat.release();
+	depthIn.release();
+	rgbIn.release();
+	depth_down.release();
+	rgb_down.release();
+	depthf.release();
+	mask.release();
+	grayMat.release();
+	cannyResult.release();
+	lastFrame.release();
+	video.release();
+
 	return 0;
 }

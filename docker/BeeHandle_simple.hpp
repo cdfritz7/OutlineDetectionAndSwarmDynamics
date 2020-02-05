@@ -51,20 +51,22 @@ public:
   float get_potential(cv::Point p){
     float cur_potential = 0;
     int resistance_str = 4.0;
-    int attraction_str = 100.0;
+    int attraction_str = 1200.0;
 
     for(unsigned i = 0; i < bees.size(); i++){
       int dist = distance(bees.at(i), p);
       if(dist == 0)
-        cur_potential -= resistance_str*2;
+        cur_potential -= resistance_str*10;
       else
-        cur_potential -=  resistance_str/dist;
+        cur_potential -=  (float)resistance_str/(dist);
     }
 
     for(unsigned i = 0; i < flowers.size(); i++){
       int dist = distance(flowers.at(i), p);
       if(dist != 0)
-        cur_potential += attraction_str/dist;
+        cur_potential += (float)attraction_str/dist;
+      else
+        cur_potential += attraction_str*3;
     }
 
     return cur_potential;
