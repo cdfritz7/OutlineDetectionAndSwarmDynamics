@@ -23,6 +23,7 @@ class BeeHandle:
     def add_bee(self, x: int = None, y: int = None):
         if x is None:
             x = int(rand.uniform(0, self.MatrixLength-0.5))
+        if y is None:
             y = int(rand.uniform(0, self.MatrixHeight-0.5))
 
         self.bee_array.append([x, y])
@@ -30,6 +31,7 @@ class BeeHandle:
     def add_flower(self, x: int = None, y: int = None):
         if x is None:
             x = int(rand.uniform(0, self.MatrixLength - 0.5))
+        if y is None:
             y = int(rand.uniform(0, self.MatrixHeight - 0.5))
 
         self.flower_array.append([x, y])
