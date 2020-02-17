@@ -315,6 +315,7 @@ int main(int argc, char **argv) {
 			}
 		}
 
+		//starts recording when you press P
 		if(k == 80 && is_recording==false){
 			is_recording = true;
 			video_time_start = chrono::high_resolution_clock::now();
