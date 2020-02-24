@@ -86,7 +86,7 @@ class BeeHandle:
 
             threads = []
 
-        print(paired_idx)
+        # print(paired_idx)
 
         if len(self.bee_array) > len(self.flower_array):
             for i in range(len(paired_idx)):
@@ -158,6 +158,7 @@ class BeeHandle:
                     bee[1] = bee[1] - int(sin(rads) * self.MoveMax)
                 else:
                     bee[1] = new_y
+
 
 class SMThread:
     def __init__(self, start: int, end: int, idx_array: list, paired_idx: list, candidate_array: list,
