@@ -153,7 +153,7 @@ int main(int argc, char **argv) {
 	int height = 480;
 	int down_width = 320; //we resize our input arrays for faster computation
 	int down_height = 240;
-	int contour_drop = 6; //we keep 1/<contour_drop> contours
+	int contour_drop = 1; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
 
 	//create bee handler for calculating bee dynamics
@@ -257,6 +257,10 @@ int main(int argc, char **argv) {
 		//contours = drop_contours_2d(contours, contour_drop);
 		flat_contours = drop_contours_1d(contours, contour_drop);
 
+		//if we don't have a dropped frame
+		if(flat_contours.size() < 40)
+			continue;
+
 		//start timer for bee module if timing is enabled
 		if(time_it){
 			bee_start = chrono::high_resolution_clock::now();
@@ -277,8 +281,8 @@ int main(int argc, char **argv) {
 			int yPos = bee_positions.at(i).y;
 			int xPos = bee_positions.at(i).x;
 			finalFrame.at<uchar>(yPos%down_height, xPos%down_width) = 255;
-			finalFrame.at<uchar>((yPos+1)%down_height, (xPos)%down_width) = 255;
-			finalFrame.at<uchar>((yPos)%down_height, (xPos+1)%down_width) = 255;
+			//finalFrame.at<uchar>((yPos+1)%down_height, (xPos)%down_width) = 255;
+			//finalFrame.at<uchar>((yPos)%down_height, (xPos+1)%down_width) = 255;
 			finalFrame.at<uchar>((yPos+1)%down_height, (xPos+1)%down_width) = 255;
 		}
 
