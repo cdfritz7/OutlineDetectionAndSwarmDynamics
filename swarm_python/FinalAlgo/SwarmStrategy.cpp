@@ -1,4 +1,5 @@
 #include <vector>
+#include <random>
 
 class SwarmStrategy {
 protected:
@@ -10,7 +11,7 @@ protected:
 	int yWidth;
 	int stepSize;
 public:
-	virtual void updatePoints();
+	void updatePoints() {};
 	const std::vector<int> getPointX() {
 		return pointX;
 	}
@@ -23,7 +24,28 @@ public:
 	const std::vector<int> getAttractorArrayY() {
 		return attractorY;
 	}
-	virtual void addP(int x, int y);
-	virtual void addA(int x, int y);
-	virtual void replaceAArray(std::vector<int> newAArray);
+	void addP(int x = -1, int y = -1) {
+		if (x == -1) {
+			x = rand() % xWidth;
+		}
+		if (y == -1) {
+			y = rand() % yWidth;
+		}
+		pointX.push_back(x);
+		pointY.push_back(y);
+	};
+	void addA(int x = -1, int y = -1) {
+		if (x == -1) {
+			x = rand() % xWidth;
+		}
+		if (y == -1) {
+			y = rand() % yWidth;
+		}
+		pointX.push_back(x);
+		pointY.push_back(y);
+	};
+	void replaceAArray(std::vector<int> attractorX, std::vector<int> attractorY) {
+		this->attractorX = attractorX;
+		this->attractorY = attractorY;
+	};
 };

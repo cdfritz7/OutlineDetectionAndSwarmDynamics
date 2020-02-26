@@ -10,12 +10,12 @@ protected:
 	int yWidth;
 	int stepSize;
 public:
-	virtual void updatePoints();
+	virtual void updatePoints() = 0;
 	const std::vector<int> getPointArrayX();
 	const std::vector<int> getPointArrayY();
 	const std::vector<int> getAttractorArrayX();
 	const std::vector<int> getAttractorArrayY();
-	virtual void addP(int x = -1, int y = -1);
-	virtual void addA(int x = -1, int y = -1);
-	virtual void replaceAArray(std::vector<int> newAArray);
+	virtual void addP(int x = -1, int y = -1) = 0;
+	virtual void addA(int x = -1, int y = -1) = 0;
+	virtual void replaceAArray(std::vector<int> attractorX, std::vector<int> attractorY) = 0;
 };
