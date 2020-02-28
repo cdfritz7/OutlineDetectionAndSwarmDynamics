@@ -105,7 +105,7 @@ int main( void )
 	GLuint programID = LoadShaders( "Particle.vertexshader", "Particle.fragmentshader" );
 
 	//load our texture
-	GLuint Texture = loadPNG("bee_2.png");
+	GLuint Texture = loadPNG("up2.png");
 
 	// Vertex shader
 	GLuint CameraRight_worldspace_ID  = glGetUniformLocation(programID, "CameraRight_worldspace");
@@ -116,6 +116,7 @@ int main( void )
 	GLuint TextureID  = glGetUniformLocation(programID, "myTextureSampler");
 
 	static GLfloat* g_particule_position_size_data = new GLfloat[MaxParticles * 4];
+  static GLfloat* g_particule_stage_data = new GLfloat[MaxParticles * 2];
 
 	int pos_spread = 10;
 	for(int i=0; i<MaxParticles; i++){
@@ -129,7 +130,7 @@ int main( void )
 		);
 
 		ParticlesContainer[i].speed = randomdir;
-
+		ParticlesContainer[i].stage = 0;
 		ParticlesContainer[i].size = 1.0f;
 
 		//set the camera distance to current position - where camera is placed
@@ -149,12 +150,21 @@ int main( void )
 	glBindBuffer(GL_ARRAY_BUFFER, billboard_vertex_buffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
 
-	// The VBO containing the positions and sizes of the particles
+	// The VBO containing the information (position, size) of the particles
 	GLuint particles_position_buffer;
 	glGenBuffers(1, &particles_position_buffer);
 	glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
+
 	// Initialize with empty (NULL) buffer : it will be updated later, each frame.
 	glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+
+	// The VBO containing the information about stages of each of the particles
+	GLuint particles_stage_buffer;
+	glGenBuffers(1, &particles_stage_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, particles_stage_buffer);
+
+	// Initialize with empty (NULL) buffer : it will be updated later, each frame.
+	glBufferData(GL_ARRAY_BUFFER, MaxParticles * 2 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
 
 	double lastTime = glfwGetTime();
 	do
@@ -205,12 +215,20 @@ int main( void )
 
 			p.cameradistance = glm::length2( p.pos - CameraPosition );
 
-			// Fill the GPU buffer
+			//set the direction and the stage
+			p.stage = (p.stage + 1)%2;
+
+			// Fill the GPU buffer of positions
 			g_particule_position_size_data[4*i+0] = p.pos.x;
 			g_particule_position_size_data[4*i+1] = p.pos.y;
 			g_particule_position_size_data[4*i+2] = p.pos.z;
 
 			g_particule_position_size_data[4*i+3] = p.size;
+
+			//fill the GPU buffer with stage information
+			g_particule_stage_data[2*i+0] = p.stage;
+			g_particule_stage_data[2*i+1] = p.direction;
+
 		}
 
 		SortParticles();
@@ -222,6 +240,11 @@ int main( void )
 		glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
 		glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
 		glBufferSubData(GL_ARRAY_BUFFER, 0, MaxParticles * sizeof(GLfloat) * 4, g_particule_position_size_data);
+
+		glBindBuffer(GL_ARRAY_BUFFER, particles_stage_buffer);
+		glBufferData(GL_ARRAY_BUFFER, MaxParticles * 2 * sizeof(GLfloat), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
+		glBufferSubData(GL_ARRAY_BUFFER, 0, MaxParticles * sizeof(GLfloat) * 2, g_particule_stage_data);
+
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -265,6 +288,18 @@ int main( void )
 			(void*)0                          // array buffer offset
 		);
 
+		//3rd attribute buffer : information about particle stage
+		glEnableVertexAttribArray(2);
+		glBindBuffer(GL_ARRAY_BUFFER, particles_stage_buffer);
+		glVertexAttribPointer(
+			2,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+			2,                                // size : x + y + z + size => 4
+			GL_FLOAT,                         // type
+			GL_FALSE,                         // normalized?
+			0,                                // stride
+			(void*)0                          // array buffer offset
+		);
+
 		// These functions are specific to glDrawArrays*Instanced*.
 		// The first parameter is the attribute buffer we're talking about.
 		// The second parameter is the "rate at which generic vertex attributes advance when rendering multiple instances"
@@ -297,6 +332,7 @@ int main( void )
 
 	// Cleanup VBO and shader
 	glDeleteBuffers(1, &particles_position_buffer);
+	glDeleteBuffers(1, &particles_stage_buffer);
 	glDeleteBuffers(1, &billboard_vertex_buffer);
 	glDeleteProgram(programID);
 	glDeleteTextures(1, &Texture);

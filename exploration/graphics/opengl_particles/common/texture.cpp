@@ -101,6 +101,7 @@ GLuint loadBMP_custom(const char * imagepath){
 
 GLuint loadPNG(const char* filepath){
 	int width, height, nrChannels;
+	stbi_set_flip_vertically_on_load(1);
 	unsigned char *data = stbi_load(filepath, &width, &height, &nrChannels, 0);
 
 	// Create one OpenGL texture

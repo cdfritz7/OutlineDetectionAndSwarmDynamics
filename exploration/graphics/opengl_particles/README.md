@@ -41,3 +41,7 @@ g++ -o tutorial0 tutorial02.cpp ../common/shader.cpp -lglfw3 -lGLEW -lGL -lm -lX
 
 4. used stb_image instead
 https://learnopengl.com/Getting-started/Textures
+
+------------------------
+resize an image to be square while keeping aspect ratio - add transparency to sides
+$convert -background none -resize 64x64 -gravity center -extent 64x64 bee_2.png bee_2_correct.png
