@@ -161,8 +161,14 @@ int main(int argc, char **argv) {
 	if(argc > 2){
 		num_bees = stoi(String(argv[2]));
 	}
-	BeeHandle bee_handle = BeeHandle();
-	bee_handle.add_bees(num_bees, down_width, down_height);
+	//BeeHandle bee_handle = BeeHandle();
+	int step_size = 3;
+	SwarmStrategy swarm = new BeeHandle(width, height, step_size);
+	//bee_handle.add_bees(num_bees, down_width, down_height);
+	int bee_per_unit_length = (int)sqrt((double)width*height/num_bees);
+	for(int x=0; x<width; x+=bee_per_unit_length)
+		for(int y=0; y<width; y+=bee_per_unit_length)
+			swarm.addP(x, y);
 
 	//variables used for temperature
 	/*
@@ -267,15 +273,24 @@ int main(int argc, char **argv) {
 		}
 
 		//clear flowers for the next state
-		bee_handle.clear_flowers();
+		//bee_handle.clear_flowers();
 
 		//flatten contours and add as flowers to bee_handle
-		bee_handle.add_flowers(flat_contours);
-		bee_handle.update_movement(3);
+		//bee_handle.add_flowers(flat_contours);
+
+		// TODO define getX, getY
+		swarm.replaceAArray(getX(flat_contours), getY(flat_contours));
+
+		//bee_handle.update_movement(3);
+		swarm.updatePoints();
 
 		//get bee positions
 		bee_positions.clear();
-		bee_positions = bee_handle.get_bees();
+		//bee_positions = bee_handle.get_bees();
+
+		// TODO define getPointArray
+		// TODO or consider changing Connor's code to use two arrays for points, attractors
+		bee_positions = getPointArray(swarm.getPointArrayX, swarm.getPointArrayY);
 
 		for(unsigned i = 0; i < bee_positions.size(); i++){
 			int yPos = bee_positions.at(i).y;
