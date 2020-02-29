@@ -34,6 +34,7 @@ class BeeHandle:
         self.flower_array.append([x, y])
 
     def set_flower_array(self, flower_array):
+        print("Flower Array: " + str(flower_array))
         self.flower_array = flower_array
 
     def update_movement(self):
