@@ -199,8 +199,12 @@ int main(int argc, char **argv) {
 
 	vector<vector<Point>> contours;
 	vector<Point> flat_contours;
+	vector<int> flat_contours_x;
+	vector<int> flat_contours_y;
 	vector<Vec4i> hierarchy;
-	vector<Point> bee_positions;
+	//vector<Point> bee_positions;
+	vector<int> bee_position_x;
+	vector<int> bee_position_y;
 
 	Freenect::Freenect freenect;
 	MyFreenectDevice& device = freenect.createDevice<MyFreenectDevice>(0);
@@ -238,7 +242,9 @@ int main(int argc, char **argv) {
 
 		contours.clear();
 		flat_contours.clear();
-  	hierarchy.clear();
+		flat_contours_x.clear();
+		flat_contours_y.clear();
+		hierarchy.clear();
 
 		device.getVideo(rgbIn);
 		device.getDepth(depthIn);
@@ -262,7 +268,10 @@ int main(int argc, char **argv) {
 									cv::CHAIN_APPROX_TC89_L1, Point(0,0));
 		//contours = drop_contours_2d(contours, contour_drop);
 		flat_contours = drop_contours_1d(contours, contour_drop);
-
+		for(int i=0; i<flat_contours.size(); i++) {
+			flat_contours_x.push_back(flat_contours.get(i).x);
+			flat_contours_y.push_back(flat_contours.get(i).y);
+		}
 		//if we don't have a dropped frame
 		if(flat_contours.size() < 40)
 			continue;
@@ -278,23 +287,25 @@ int main(int argc, char **argv) {
 		//flatten contours and add as flowers to bee_handle
 		//bee_handle.add_flowers(flat_contours);
 
-		// TODO define getX, getY
-		swarm.replaceAArray(getX(flat_contours), getY(flat_contours));
+		swarm.replaceAArray(flat_contours_x, flat_contours_y);
 
 		//bee_handle.update_movement(3);
 		swarm.updatePoints();
 
 		//get bee positions
-		bee_positions.clear();
+		//bee_positions.clear();
 		//bee_positions = bee_handle.get_bees();
+		bee_position_x.clear();
+		bee_postion_y.clear();
 
-		// TODO define getPointArray
-		// TODO or consider changing Connor's code to use two arrays for points, attractors
-		bee_positions = getPointArray(swarm.getPointArrayX, swarm.getPointArrayY);
+		bee_position_x = swarm.getPointArrayX()
+		bee_position_y = swarm.getPointArrayY();
 
-		for(unsigned i = 0; i < bee_positions.size(); i++){
-			int yPos = bee_positions.at(i).y;
-			int xPos = bee_positions.at(i).x;
+		for(unsigned i = 0; i < bee_position_x.size(); i++){
+			//int yPos = bee_positions.at(i).y;
+			int yPos = bee_position_y.at(i);
+			//int xPos = bee_positions.at(i).x;
+			int xPos = bee_position_x.at(i);
 			finalFrame.at<uchar>(yPos%down_height, xPos%down_width) = 255;
 			//finalFrame.at<uchar>((yPos+1)%down_height, (xPos)%down_width) = 255;
 			//finalFrame.at<uchar>((yPos)%down_height, (xPos+1)%down_width) = 255;
