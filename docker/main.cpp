@@ -7,6 +7,7 @@
 #include <fstream>
 #include <chrono>
 #include "BeeHandle_simple.hpp"
+#include "Swarm.h"
 
 using namespace cv;
 using namespace std;
