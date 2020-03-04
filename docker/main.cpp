@@ -157,7 +157,7 @@ int main(int argc, char **argv) {
 	int depth_threshold = 1500; //threshold depth in mm
 
 	//create bee handler for calculating bee dynamics
-	int num_bees = 100;
+	int num_bees = 800;
 	if(argc > 2){
 		num_bees = stoi(String(argv[2]));
 	}
