@@ -26,9 +26,18 @@ RUN git clone https://github.com/opencv/opencv.git && \
 #add gdb
 RUN apt-get install -y gdb valgrind
 
+#add the stuff for graphics we can download with apt-get
+RUN apt-get -y update && apt-get -y install libglu1-mesa-dev freeglut3-dev && \
+    apt-get -y install mesa-common-dev libglm-dev && \
+    apt-get -y install unzip nano
+
 #copy over all the files in the current directory to our container
 #anything after this line will be rerun at every build
 ADD . /project
+
+#build graphics stuff from the dependencies folder
+RUN cd dependencies && tar -xvzf glew-2.1.0.tgz && cd glew-2.1.0 && make install && cd ../ && \
+    unzip glfw-3.3.2.zip && cd glfw-3.3.2 && cmake . && make install && cd ../../
 
 #move updated version of libfreenect header and make the executable
 RUN mv /project/libfreenect.hpp /usr/include/libfreenect.hpp && \
