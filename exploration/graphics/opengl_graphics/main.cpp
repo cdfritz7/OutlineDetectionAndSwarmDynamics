@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <vector>
 
+#include <vector>
+#include <algorithm>
+
 // Include GLEW
 #include <GL/glew.h>
 
@@ -20,6 +23,28 @@ using namespace glm;
 #include "common/controls.hpp"
 #include "common/objloader.hpp"
 
+enum Direction {North, NorthEast, East, SouthEast, South, SouthWest, West, NorthWest};
+
+struct Bee{
+	glm::vec3 pos;
+	int stage;
+	int direction;
+	float cameradistance; // *Squared* distance to the camera. if dead : -1.0f
+
+	bool operator<(const Bee& that) const {
+		// Sort in reverse order : far particles drawn first.
+		return this->cameradistance > that.cameradistance;
+	}
+};
+
+
+const int MaxBees = 100000;
+Bee BeesContainer[MaxBees];
+
+void SortParticles(){
+	std::sort(&BeesContainer[0], &BeesContainer[MaxBees]);
+}
+
 int main(void){
 	//initialize GLFW
 	if(!glfwInit()){
@@ -29,13 +54,14 @@ int main(void){
 	}
 
 	glfwWindowHint(GLFW_SAMPLES, 4);
+	glfwWindowHint(GLFW_RESIZABLE,GL_FALSE);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Open a window and create its OpenGL context
-	window = glfwCreateWindow( 1920, 1400, "Tutorial 03 - Matrices", NULL, NULL);
+	window = glfwCreateWindow( 1920, 1400, "Bees", NULL, NULL);
 	if( window == NULL ){
 		fprintf( stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n" );
 		getchar();
@@ -56,8 +82,15 @@ int main(void){
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
-	// Dark blue background
+	// White background
 	glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+
+	/* these cause bee to not show up
+	// Enable depth test
+	glEnable(GL_DEPTH_TEST);
+	// Accept fragment if it closer to the camera than the former one
+	glDepthFunc(GL_LESS);
+	*/
 
 	GLuint VertexArrayID;
 	glGenVertexArrays(1, &VertexArrayID);
@@ -69,7 +102,6 @@ int main(void){
 
 	// Get a handle for our "MVP" uniform
 	GLuint MatrixID = glGetUniformLocation(programID, "MVP");
-
 
 	// Projection matrix : 45� Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
 	glm::mat4 Projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
@@ -84,6 +116,8 @@ int main(void){
 	glm::mat4 Model      = glm::mat4(1.0f);
 	// Our ModelViewProjection : multiplication of our 3 matrices
 	glm::mat4 MVP        = Projection * View * Model; // Remember, matrix multiplication is the other way around
+
+
 
 	// Load the texture - there are dedicated libraries for loading textures more efficiently
 	GLuint Texture = loadPNG("bee_2.png");
@@ -114,11 +148,6 @@ int main(void){
 
 		// Use our shader
 		glUseProgram(programID);
-
-		//translate to the left by 0.005
-		glm::mat4 translate_matrix = glm::translate(glm::mat4(), glm::vec3(-0.005f, 0.0f, 0.0f));
-
-		//apply this matrix to all vertices at each from in GLSL
 
 		// Send our transformation to the currently bound shader,
 		// in the "MVP" uniform

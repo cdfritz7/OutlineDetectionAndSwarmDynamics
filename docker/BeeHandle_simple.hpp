@@ -51,8 +51,8 @@ public:
   float get_potential(cv::Point p){
     float cur_potential = 0;
     int resistance_str = 20;
-    int attraction_str = 400.0;
-    int stride = 6;
+    int attraction_str = 200.0;
+    int stride = 2;
     int random_off = rand()%stride;
 
     for(unsigned i = random_off; i < bees.size(); i+=stride){
