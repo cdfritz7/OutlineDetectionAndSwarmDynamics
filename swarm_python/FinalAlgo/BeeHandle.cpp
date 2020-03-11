@@ -86,15 +86,23 @@ void static stableMarriage(std::vector<int> idx_array, std::vector<cv::Point> pi
 }
 
 void BeeHandle::movePoints() {
+	int num_landed = 0;
 	if (this->points.size() > this->attractors.size()) {
 		//points are candidates, flowers are picks
 		for (int i = 0; i < points.size(); i++) {
 			int flower = paired_idx[i];
 			if (flower < attractors.size()) {
-				movePoint(i, flower);
+				num_landed += movePoint(i, flower);
 			}
 			else {
 				movePoint(i);
+			}
+		}
+		if (((double)num_landed / (double)attractors.size()) > percent_landed) {
+			updateReady = true;
+			if (next_updated) {
+				attractors = next_attractors;
+				next_updated = false;
 			}
 		}
 	}
@@ -103,12 +111,19 @@ void BeeHandle::movePoints() {
 		for (int i = 0; i < attractors.size(); i++) {
 			int bee = paired_idx[i];
 			if (bee < points.size()) {
-				movePoint(bee, i);
+				num_landed += movePoint(bee, i);
+			}
+		}
+		if (((double)num_landed / (double)points.size()) > percent_landed) {
+			updateReady = true;
+			if (next_updated) {
+				attractors = next_attractors;
+				next_updated = false;
 			}
 		}
 	}
 }
-void BeeHandle::movePoint(int P_idx, int A_idx) {
+int BeeHandle::movePoint(int P_idx, int A_idx) {
 	int dist_x, dist_y;
 	if (A_idx == -1) {
 		//move randomly
@@ -116,8 +131,8 @@ void BeeHandle::movePoint(int P_idx, int A_idx) {
 		dist_y = RandomFloat(-1.0, 1.0);
 	}
 	else {
-		dist_x = points[P_idx].x - attractors[A_idx].x;
-		dist_y = points[P_idx].y - attractors[A_idx].y;
+		dist_x = attractors[A_idx].x - points[P_idx].x;
+		dist_y = attractors[A_idx].y - points[P_idx].y;
 	}
 
 	if (A_idx != -1) {
@@ -126,7 +141,7 @@ void BeeHandle::movePoint(int P_idx, int A_idx) {
 			//move bee to flower
 			points[P_idx].x = attractors[A_idx].x;
 			points[P_idx].y = attractors[A_idx].y;
-			return;
+			return 1;
 		}
 	}
 
@@ -152,106 +167,124 @@ void BeeHandle::movePoint(int P_idx, int A_idx) {
 			points[P_idx].y = new_y;
 		}
 	}
+	return 0;
 }
 
-BeeHandle::BeeHandle(int xwidth, int ywidth, int stepsize, double randomfactor, int numthreads) {
+BeeHandle::BeeHandle(int xwidth, int ywidth, int stepsize, double randomfactor, int numthreads, double landing_percent) {
 	xWidth = xwidth;
 	yWidth = ywidth;
 	stepSize = stepsize;
 	randomFactor = randomfactor;
 	numThreads = numthreads;
 	paired_idx = std::vector<int>();
+	updateReady = true;
+	next_updated = false;
+	percent_landed = landing_percent;
+	next_attractors.clear();
 }
 
 void BeeHandle::updatePoints() {
-	std::vector<std::thread> threads;
-	std::vector<int> idx_array;
-	std::vector<std::vector<int>> repeats;
-	paired_idx.clear();
+	if (updateReady) {
+		updateReady = false;
+		std::vector<std::thread> threads;
+		std::vector<int> idx_array;
+		std::vector<std::vector<int>> repeats;
+		paired_idx.clear();
 
-	std::vector<cv::Point> picks;
-	std::vector<cv::Point> candidates;
+		std::vector<cv::Point> picks;
+		std::vector<cv::Point> candidates;
 
-	if (this->points.size() > this->attractors.size()) {
-		candidates = this->points;
-		picks = this->attractors;
-	}
-	else {
-		candidates = this->attractors;
-		picks = this->points;
-	}
-
-	// Set candidate to first pick in pick list
-	for (int i = 0; i < candidates.size(); i++) {
-		paired_idx.push_back(0);
-	}
-
-	do {
-		idx_array.clear();
-		repeats.clear();
-
-		// Initialize 2D vector
-		for (int i = 0; i < (picks.size() + 1); i++) {
-			repeats.push_back(std::vector<int>());
+		if (this->points.size() > this->attractors.size()) {
+			candidates = this->points;
+			picks = this->attractors;
+		}
+		else {
+			candidates = this->attractors;
+			picks = this->points;
 		}
 
-		// repeats[pick] contains all the candidates who picked pick
-		for (int i = 0; i < (paired_idx.size()); i++) {
-			repeats[paired_idx[i]].push_back(i);
+		// Set candidate to first pick in pick list
+		for (int i = 0; i < candidates.size(); i++) {
+			paired_idx.push_back(0);
 		}
 
-		// idx_array is the combination of all candidates with repeat picks
-		for (int i = 0; i < (repeats.size() - 1); i++) {
-			if (repeats[i].size() > 1) {
-				idx_array.insert(idx_array.end(), repeats[i].begin(), repeats[i].end());
+		do {
+			idx_array.clear();
+			repeats.clear();
+
+			// Initialize 2D vector
+			for (int i = 0; i < (picks.size() + 1); i++) {
+				repeats.push_back(std::vector<int>());
 			}
-		}
 
-		int subSize = idx_array.size() / this->numThreads;
-		int subRem = idx_array.size() % this->numThreads;
+			// repeats[pick] contains all the candidates who picked pick
+			for (int i = 0; i < (paired_idx.size()); i++) {
+				repeats[paired_idx[i]].push_back(i);
+			}
 
-		std::vector<int> subVec;
-
-		for (int i = 0; i < this->numThreads; i++) {
-			int start;
-			int end;
-			// If there are less than 3 candidates in a thread, there is no point of multithreading
-			if (idx_array.size() < (this->numThreads * 3)) {
-				if (i < 1) {
-					// Run stable marriage with everything
-					stableMarriage(idx_array, picks, candidates);
+			// idx_array is the combination of all candidates with repeat picks
+			for (int i = 0; i < (repeats.size() - 1); i++) {
+				if (repeats[i].size() > 1) {
+					idx_array.insert(idx_array.end(), repeats[i].begin(), repeats[i].end());
 				}
 			}
-			// Assign a subvector of idx_array to a thread
-			else if (i < subRem) {
-				//if (i < 1) std::cout << "case 2" << std::endl;
-				start = i * (subSize + 1);
-				end = (i + 1) * (subSize + 1);
 
-				// Create a thread
-				threads.push_back(std::thread(stableMarriage, std::vector<int>(idx_array.cbegin() + start, idx_array.cbegin() + end), picks, candidates));
+			int subSize = idx_array.size() / this->numThreads;
+			int subRem = idx_array.size() % this->numThreads;
+
+			std::vector<int> subVec;
+
+			for (int i = 0; i < this->numThreads; i++) {
+				int start;
+				int end;
+				// If there are less than 3 candidates in a thread, there is no point of multithreading
+				if (idx_array.size() < (this->numThreads * 3)) {
+					if (i < 1) {
+						// Run stable marriage with everything
+						stableMarriage(idx_array, picks, candidates);
+					}
+				}
+				// Assign a subvector of idx_array to a thread
+				else if (i < subRem) {
+					//if (i < 1) std::cout << "case 2" << std::endl;
+					start = i * (subSize + 1);
+					end = (i + 1) * (subSize + 1);
+
+					// Create a thread
+					threads.push_back(std::thread(stableMarriage, std::vector<int>(idx_array.cbegin() + start, idx_array.cbegin() + end), picks, candidates));
+				}
+				// Assign a subvector of idx_array to a thread
+				else {
+					//if (i < 1) std::cout << "case 3" << std::endl;
+					start = subRem * (subSize + 1) + (i - subRem) * (subSize);
+					end = subRem * (subSize + 1) + (i - subRem + 1) * (subSize);
+
+					// Create a thread
+					threads.push_back(std::thread(stableMarriage, std::vector<int>(idx_array.cbegin() + start, idx_array.cbegin() + end), picks, candidates));
+				}
 			}
-			// Assign a subvector of idx_array to a thread
-			else {
-				//if (i < 1) std::cout << "case 3" << std::endl;
-				start = subRem * (subSize + 1) + (i - subRem) * (subSize);
-				end = subRem * (subSize + 1) + (i - subRem + 1) * (subSize);
 
-				// Create a thread
-				threads.push_back(std::thread(stableMarriage, std::vector<int>(idx_array.cbegin() + start, idx_array.cbegin() + end), picks, candidates));
+			for (int j = 0; j < threads.size(); j++) {
+				threads[j].join();
 			}
-		}
 
-		for (int j = 0; j < threads.size(); j++) {
-			threads[j].join();
-		}
-
-		threads.clear();
-	} while (idx_array.size() > 0);
-
+			threads.clear();
+		} while (idx_array.size() > 0);
+	}
+	
 	movePoints();
 }
 
 std::vector<int> BeeHandle::getPairedIdx() {
 	return paired_idx;
+}
+
+void BeeHandle::safeReplaceAttractors(std::vector<cv::Point> new_attractors) {
+	if (updateReady) {
+		attractors = new_attractors;
+	}
+	else {
+		next_attractors = new_attractors;
+		next_updated = true;
+	}
 }
