@@ -8,6 +8,7 @@ using namespace std;
 
 int main( void ){
   GraphicsModule gm (1000, 10, 10, -10, -10);
+  
   do{
     //gm.update_particles(x, y, stage, direction);
     gm.update_display();

@@ -7,6 +7,7 @@
 #include <fstream>
 #include <chrono>
 #include "BeeHandle_simple.hpp"
+//#include "FinalAlgo/BeeHandle.cpp"
 
 using namespace cv;
 using namespace std;
@@ -157,12 +158,16 @@ int main(int argc, char **argv) {
 	int depth_threshold = 1500; //threshold depth in mm
 
 	//create bee handler for calculating bee dynamics
-	int num_bees = 800;
+	int num_bees = 2000;
 	if(argc > 2){
 		num_bees = stoi(String(argv[2]));
 	}
 	BeeHandle bee_handle = BeeHandle();
+	//BeeHandle bee_handle = BeeHandle(width, height, 10, 0);
 	bee_handle.add_bees(num_bees, down_width, down_height);
+	//for (int i = 0; i < num_bees; i++){
+	//	bee_handle.addP();
+	//}
 
 	//variables used for temperature
 	/*
@@ -179,22 +184,23 @@ int main(int argc, char **argv) {
 	RNG rng(1235);
 
 	//create the matrices we'll use
-	Mat depthIn(Size(width,height), CV_16UC1);
-	Mat rgbIn(Size(width,height), CV_8UC3, Scalar(0));
-	Mat depth_down(Size(down_width,down_height),CV_16UC1);
-	Mat rgb_down(Size(down_width,down_height),CV_8UC3);
-	Mat depthf (Size(down_width,down_height),CV_8UC3);
-	Mat mask (Size(down_width,down_height), CV_8UC3);
-	Mat grayMat(Size(down_width,down_height), CV_8UC1);
+	Mat depthIn = Mat::zeros(Size(width,height), CV_16UC1);
+	Mat rgbIn = Mat::zeros(Size(width,height), CV_8UC3);
+	Mat depth_down = Mat::zeros(Size(down_width,down_height),CV_16UC1);
+	Mat rgb_down = Mat::zeros(Size(down_width,down_height),CV_8UC3);
+	Mat depthf = Mat::zeros(Size(down_width,down_height),CV_8UC3);
+	Mat mask = Mat::zeros(Size(down_width,down_height), CV_8UC3);
+	Mat grayMat = Mat::zeros(Size(down_width,down_height), CV_8UC1);
 	Mat cannyResult;
-	Mat lastFrame(Size(down_width, down_height), CV_8UC3);
-	Mat outMat(Size(width, height),CV_8UC1, Scalar(0));
-	Mat finalFrame(Size(down_width, down_height), CV_8UC1, Scalar(0));
+	Mat lastFrame = Mat::zeros(Size(down_width, down_height), CV_8UC3);
+	Mat outMat = Mat::zeros(Size(width, height),CV_8UC1);
+	Mat finalFrame = Mat::zeros(Size(down_width, down_height), CV_8UC1);
 
 	vector<vector<Point>> contours;
 	vector<Point> flat_contours;
 	vector<Vec4i> hierarchy;
 	vector<Point> bee_positions;
+	vector<Point> bee_attractors;
 
 	Freenect::Freenect freenect;
 	MyFreenectDevice& device = freenect.createDevice<MyFreenectDevice>(0);
@@ -225,6 +231,11 @@ int main(int argc, char **argv) {
 	bool is_recording = false;
 	VideoWriter video("outcpp.avi",VideoWriter::fourcc('M','J','P','G'),10, Size(down_width,down_height));
 
+	/*sometimes frames are dropped, this is used to tell if a
+	frame has been dropped, or if there's just nothing being
+	recorded*/
+	int num_dropped = 0;
+
 	while (!die) {
 
 		outMat = Scalar(0);
@@ -240,7 +251,6 @@ int main(int argc, char **argv) {
 		//resize input image and depth for decreased computation
 		cv::resize(rgbIn, rgb_down, Size(down_width, down_height));
 		cv::resize(depthIn, depth_down, Size(down_width, down_height));
-
 
 		depth_down.convertTo(depthf, CV_8UC3, 255.0/10000.0); //kinect caps out at 10000 mm
 		filter(depthf, depth_threshold*255.0/10000.0); //remove background
@@ -258,8 +268,14 @@ int main(int argc, char **argv) {
 		flat_contours = drop_contours_1d(contours, contour_drop);
 
 		//if we don't have a dropped frame
-		if(flat_contours.size() < 40)
-			continue;
+		if(flat_contours.size() < 100){
+			if(num_dropped<5){
+				num_dropped++;
+				continue;
+			}
+		}else{
+			num_dropped = 0;
+		}
 
 		//start timer for bee module if timing is enabled
 		if(time_it){
@@ -267,15 +283,20 @@ int main(int argc, char **argv) {
 		}
 
 		//clear flowers for the next state
-		bee_handle.clear_flowers();
+		//bee_handle.clear_flowers();
 
 		//flatten contours and add as flowers to bee_handle
 		bee_handle.add_flowers(flat_contours);
-		bee_handle.update_movement(3);
+		//bee_handle.replaceAArray(flat_contours);
+		bee_handle.update_movement(5);
+		//bee_handle.updatePoints();
 
 		//get bee positions
 		bee_positions.clear();
 		bee_positions = bee_handle.get_bees();
+		//bee_positions = bee_handle.getPoints();
+		//bee_attractors = bee_handle.getAttractors();
+		//bee_positions.insert(bee_positions.end(), bee_attractors.begin(), bee_attractors.end());
 
 		for(unsigned i = 0; i < bee_positions.size(); i++){
 			int yPos = bee_positions.at(i).y;
@@ -283,7 +304,7 @@ int main(int argc, char **argv) {
 			finalFrame.at<uchar>(yPos%down_height, xPos%down_width) = 255;
 			//finalFrame.at<uchar>((yPos+1)%down_height, (xPos)%down_width) = 255;
 			//finalFrame.at<uchar>((yPos)%down_height, (xPos+1)%down_width) = 255;
-			finalFrame.at<uchar>((yPos+1)%down_height, (xPos+1)%down_width) = 255;
+			//finalFrame.at<uchar>((yPos+1)%down_height, (xPos+1)%down_width) = 255;
 		}
 
 		//end timer for bees if timing is enabled
