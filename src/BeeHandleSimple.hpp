@@ -2,8 +2,12 @@
 #include <vector>
 #include <opencv.hpp>
 #include <thread>
+#include <math.h>
 
 #define NUM_THREADS 8
+
+// number of directions to average
+#define DIR_MEMORY 10
 
 using namespace std;
 
@@ -16,6 +20,8 @@ private:
   vector<cv::Point> bees;
   vector<cv::Point> flowers;
   thread threads [NUM_THREADS];
+  vector<vector<int>> past_dirs;
+  vector<int> dirs;
 
   void join_threads() {
   	for(int i=0; i<NUM_THREADS; i++) {
@@ -29,13 +35,60 @@ private:
   	}
   }
 
+  // Map an increment ∈ {-1, 0, 1} in x and y direction to direction number ∈ [0,7]
+  // Assumes y increases as you move down the screen
+  int x_y_to_dir(int x, int y) {
+    if(x==-1) {
+      if(y==-1) {
+        return 7;
+      }
+      else if(y==0) {
+        return 6;
+      }
+      else {
+        return 5;
+      }
+    }
+    else if(x==0) {
+      if(y==-1) {
+        return 0;
+      }
+      // randomize direction if the bee didn't move
+      else if(y==0) {
+        return (rand() % 3)-1;
+      }
+      else {
+        return 4;
+      }
+    }
+    else {
+      if(y==-1) {
+        return 1;
+      }
+      else if(y==0) {
+        return 2;
+      }
+      else {
+        return 3;
+      }
+    }
+  }
+
   void move_bee(int thread_num) {
   	int bee_per_thread = bees.size()/NUM_THREADS;
   	int start = bee_per_thread*thread_num;
   	int end = start + bee_per_thread;
   	for(int i=start; i<end; i++) {
-      int newX = (this->bees.at(i).x + ((rand() % 3)-1)*move_dist)%max_x;
-      int newY = (this->bees.at(i).y + ((rand() % 3)-1)*move_dist)%max_y;
+      int move_x = (rand() % 3)-1);
+      int move_y = (rand() % 3)-1);
+      int newX = (this->bees.at(i).x + move_x*move_dist)%max_x;
+      int newY = (this->bees.at(i).y + move_y*move_dist)%max_y;
+
+      int dir = x_y_to_dir(move_x, move_y);
+      // erase oldest direction
+      this->past_dirs.pop_back();
+      // insert new direction
+      this->past_dirs.insert(0, dir)
 
       if(newX < 0)
         newX = max_x-1;
@@ -67,6 +120,14 @@ public:
   void add_bees(vector<cv::Point> locations){
     for(unsigned i = 0; i < locations.size(); i++){
       this->bees.push_back(locations.at(i));
+      // randomize current direction
+      int dir = (int)(rand()%8);
+      this->dirs.push_back(dir);
+      // initialize direction memory with random directions
+      for(int j=0; j<DIR_MEMORY; j++) {
+        int dir = (int)(rand()%8);
+        this->past_dirs.back().push_back(dir);
+      }
     }
   }
 
@@ -74,6 +135,14 @@ public:
     for(int i = 0; i < num_bees; i++){
       cv::Point p1 = cv::Point((int)(rand()%max_x), (int)(rand()%max_y));
       this->bees.push_back(p1);
+      // randomize current direction
+      int dir = (int)(rand()%8);
+      this->dirs.push_back(dir);
+      // initialize direction memory with random directions
+      for(int j=0; j<DIR_MEMORY; j++) {
+        int dir = (int)(rand()%8);
+        this->past_dirs.back().push_back(dir);
+      }
     }
   }
 
@@ -85,12 +154,25 @@ public:
     return this->bees;
   }
 
+  // Compute distance as the average of the last DIR_MEMORY directions
+  vector<int> get_dirs() {
+    for(int i=0; i<past_dirs.size(); i++) {
+      sum = 0.0;
+      for(int j=0; j<past_dirs.at(0).size(); j++) {
+        sum += past_dirs.at(i).at(j);
+      }
+      dirs.at(i) = round(sum/DIR_MEMORY)
+    }
+  }
+
   void clear_flowers(){
     this->flowers.clear();
   }
 
   void clear_bees(){
     this->bees.clear();
+    this->dirs.clear();
+    this->past_dirs.clear();
   }
 
   int distance(cv::Point p1, cv::Point p2){
