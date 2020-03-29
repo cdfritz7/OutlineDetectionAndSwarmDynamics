@@ -129,7 +129,7 @@ int main(int argc, char **argv) {
 
 	//initialization for graphics module
 	GraphicsModule gm (num_bees, down_width, down_height,
-		                 8, 0.4f,
+		                 4, 0.4f,
 		                 "./graphics/abee.png",
 	                   "./graphics/Particle.vertexshader",
 										 "./graphics/Particle.fragmentshader");
