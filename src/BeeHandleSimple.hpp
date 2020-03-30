@@ -88,7 +88,8 @@ private:
       // erase oldest direction
       this->past_dirs.at(i).pop_back();
       // insert new direction
-      this->past_dirs.at(i).insert(0, dir)
+      auto it = this->past_dirs.at(i).begin();
+      this->past_dirs.at(i).insert(it, dir);
 
       if(newX < 0)
         newX = max_x-1;
@@ -161,7 +162,7 @@ public:
       for(int j=0; j<past_dirs.at(0).size(); j++) {
         sum += past_dirs.at(i).at(j);
       }
-      dirs.at(i) = round(sum/DIR_MEMORY)
+      dirs.at(i) = round(sum/DIR_MEMORY);
     }
     return dirs;
   }
