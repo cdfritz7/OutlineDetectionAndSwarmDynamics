@@ -162,9 +162,9 @@ public:
 
   // Compute distance as the average of the last DIR_MEMORY directions
   vector<int> get_dirs() {
-    for(int i=0; i<past_dirs.size(); i++) {
+    for(int i=0; i<(int)past_dirs.size(); i++) {
       int sum = 0.0;
-      for(int j=0; j<past_dirs.at(0).size(); j++) {
+      for(int j=0; j<(int)past_dirs.at(0).size(); j++) {
         sum += past_dirs.at(i).at(j);
       }
       dirs.at(i) = round(sum/DIR_MEMORY);

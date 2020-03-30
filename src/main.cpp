@@ -25,6 +25,18 @@ void filter(cv::Mat mat, int threshold){
 	}
 }
 
+//used to test whether a string is an integer -> for arg parsing
+//https://stackoverflow.com/questions/2844817/how-do-i-check-if-a-c-string-is-an-int
+inline bool isInteger(const std::string & s)
+{
+   if(s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+'))) return false;
+
+   char * p;
+   strtol(s.c_str(), &p, 10);
+
+   return (*p == 0);
+}
+
 /*
 given a list of contours, create a list of points by concatenating each contour
 Also, drop every <prop> contours
@@ -45,8 +57,10 @@ vector<Point> drop_contours_1d(vector<vector<Point>> contours, int prop){
 
 /*
 potential arguments :
--b <number of bees>
+-bees <number of bees>
 -time
+-scale <scale> (currently multiplied by 320x240 to get screen size)
+-size <size>   (the size of each bee)
 */
 int main(int argc, char **argv) {
 
@@ -57,16 +71,42 @@ int main(int argc, char **argv) {
 	int down_height = 240;
 	int contour_drop = 1; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
+  int scale = 8; //scale for graphics window
+  int bee_size = 2; //size of each bee
+	int num_bees = 800; //number of bees
+  int bee_total = 0; //time spent on bee module
+	bool time_it = false; //whether we use timing or not
 
-	//set number of bees based on arguments
-	int num_bees = 800;
-	if(argc > 2)
-		for(int i = 0; i < argc; i++)
-			if(String(argv[i]).compare("-b")==0){
+  //set variables for timing
+	chrono::time_point<std::chrono::high_resolution_clock> time_start;
+	chrono::time_point<std::chrono::high_resolution_clock> time_stop;
+	chrono::time_point<std::chrono::high_resolution_clock> bee_start;
+	chrono::time_point<std::chrono::high_resolution_clock> bee_stop;
+	int iterations = 0;
+
+	//argument parsing
+	if(argc > 2){
+		for(int i = 0; i < argc; i++){
+			if(String(argv[i]).compare("-bees")==0 && argc>(i+1) && isInteger(argv[i+1])){
 				num_bees = stoi(String(argv[i+1]));
 				break;
 			}
 
+      if(String(argv[i]).compare("-time")==0){
+        time_it = true;
+        bee_total = 0;
+        time_start = chrono::high_resolution_clock::now();
+      }
+
+      if(String(argv[i]).compare("-scale")==0 && argc>(i+1) && isInteger(argv[i+1])){
+        scale = stoi(String(argv[i+1]));
+      }
+
+      if(String(argv[i]).compare("-size")==0 && argc>(i+1) && isInteger(argv[i+1])){
+        bee_size = stoi(String(argv[i+1]));
+      }
+    }
+  }
 
 	//create bee handler for calculating bee dynamics
 	BeeHandle bee_handle = BeeHandle(down_width, down_height);
@@ -103,25 +143,6 @@ int main(int argc, char **argv) {
 	device.startVideo();
 	device.startDepth();
 
-	//set variables for timing
-	chrono::time_point<std::chrono::high_resolution_clock> time_start;
-	chrono::time_point<std::chrono::high_resolution_clock> time_stop;
-	chrono::time_point<std::chrono::high_resolution_clock> bee_start;
-	chrono::time_point<std::chrono::high_resolution_clock> bee_stop;
-	int bee_total;
-	int iterations = 0;
-	bool time_it = false;
-
-	//start timing
-	for(int i = 0; i < argc; i++){
-		if(String(argv[1]).compare("-time")==0){
-			time_it = true;
-			bee_total = 0;
-			time_start = chrono::high_resolution_clock::now();
-			break;
-		}
-	}
-
 	/*sometimes frames are dropped, this variable is used to tell if a
 	frame has been dropped, or if there's just nothing being
 	recorded*/
@@ -129,7 +150,7 @@ int main(int argc, char **argv) {
 
 	//initialization for graphics module
 	GraphicsModule gm (num_bees, down_width, down_height,
-		                 4, 0.4f,
+		                 scale, bee_size/10.0f,
 		                 "./graphics/abee.png",
 	                   "./graphics/Particle.vertexshader",
 										 "./graphics/Particle.fragmentshader");
@@ -165,7 +186,7 @@ int main(int argc, char **argv) {
 		grayMat.copyTo(outMat, mask);
 
 		//find edges and contours
-		cv::medianBlur(outMat, outMat, 7);
+		cv::medianBlur(outMat, outMat, 3);
 		cv::Canny(outMat, cannyResult, 50, 100, 3);
 		cv::findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1, cv::Point(0,0));
 		flat_contours = drop_contours_1d(contours, contour_drop);
