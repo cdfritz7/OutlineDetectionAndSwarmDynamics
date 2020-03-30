@@ -136,6 +136,8 @@ int main(int argc, char **argv) {
 	vector<int> bee_x (num_bees);
 	vector<int> bee_y (num_bees);
 	vector<int> bee_stage (num_bees);
+
+  // 0 - 7 starting north going clockwise
 	vector<int> bee_dir (num_bees);
 
 	//main loop
@@ -191,13 +193,14 @@ int main(int argc, char **argv) {
 		//get bee positions
 		bee_positions.clear();
 		bee_positions = bee_handle.get_bees();
+    bee_dir = bee_handle.get_dirs();
 
 		//update our graphics module
 		for(int i = 0; i < num_bees; i++){
 			bee_x[i] = bee_positions[i].x;
 			bee_y[i] = bee_positions[i].y;
 			bee_stage[i] = (bee_stage[i]+1)%12;
-			bee_dir[i] = (bee_dir[i]+1)%8;
+			//bee_dir[i] = (bee_dir[i]+1)%8;
 		}
 		gm.update_particles(bee_x, bee_y, bee_stage, bee_dir);
 		gm.update_display();
