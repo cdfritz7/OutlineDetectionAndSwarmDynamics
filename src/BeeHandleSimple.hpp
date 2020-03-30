@@ -79,16 +79,16 @@ private:
   	int start = bee_per_thread*thread_num;
   	int end = start + bee_per_thread;
   	for(int i=start; i<end; i++) {
-      int move_x = (rand() % 3)-1);
-      int move_y = (rand() % 3)-1);
+      int move_x = (rand() % 3)-1;
+      int move_y = (rand() % 3)-1;
       int newX = (this->bees.at(i).x + move_x*move_dist)%max_x;
       int newY = (this->bees.at(i).y + move_y*move_dist)%max_y;
 
       int dir = x_y_to_dir(move_x, move_y);
       // erase oldest direction
-      this->past_dirs.pop_back();
+      this->past_dirs.at(i).pop_back();
       // insert new direction
-      this->past_dirs.insert(0, dir)
+      this->past_dirs.at(i).insert(0, dir)
 
       if(newX < 0)
         newX = max_x-1;
@@ -157,12 +157,13 @@ public:
   // Compute distance as the average of the last DIR_MEMORY directions
   vector<int> get_dirs() {
     for(int i=0; i<past_dirs.size(); i++) {
-      sum = 0.0;
+      int sum = 0.0;
       for(int j=0; j<past_dirs.at(0).size(); j++) {
         sum += past_dirs.at(i).at(j);
       }
       dirs.at(i) = round(sum/DIR_MEMORY)
     }
+    return dirs;
   }
 
   void clear_flowers(){
