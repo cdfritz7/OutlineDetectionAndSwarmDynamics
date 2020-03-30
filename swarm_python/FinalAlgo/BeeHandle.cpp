@@ -98,7 +98,7 @@ void BeeHandle::movePoints() {
 				movePoint(i);
 			}
 		}
-		if (((double)num_landed / (double)attractors.size()) > percent_landed) {
+		if (attractors.size() == 0 || ((double)num_landed / (double)attractors.size()) >= percent_landed) {
 			updateReady = true;
 			if (next_updated) {
 				attractors = next_attractors;
@@ -114,7 +114,7 @@ void BeeHandle::movePoints() {
 				num_landed += movePoint(bee, i);
 			}
 		}
-		if (((double)num_landed / (double)points.size()) > percent_landed) {
+		if (points.size() == 0 ||((double)num_landed / (double)points.size()) >= percent_landed) {
 			updateReady = true;
 			if (next_updated) {
 				attractors = next_attractors;
