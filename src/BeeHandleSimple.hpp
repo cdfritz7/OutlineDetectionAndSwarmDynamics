@@ -111,6 +111,7 @@ public:
   BeeHandle(){
     max_x = 320;
     max_y = 240;
+
   }
 
   BeeHandle(int maxX, int maxY){
@@ -125,10 +126,12 @@ public:
       int dir = (int)(rand()%8);
       this->dirs.push_back(dir);
       // initialize direction memory with random directions
+      vector<int> bee_past_dirs;
       for(int j=0; j<DIR_MEMORY; j++) {
         int dir = (int)(rand()%8);
-        this->past_dirs.back().push_back(dir);
+        bee_past_dirs.push_back(dir);
       }
+      this->past_dirs.push_back(bee_past_dirs);
     }
   }
 
@@ -140,10 +143,12 @@ public:
       int dir = (int)(rand()%8);
       this->dirs.push_back(dir);
       // initialize direction memory with random directions
+      vector<int> bee_past_dirs;
       for(int j=0; j<DIR_MEMORY; j++) {
         int dir = (int)(rand()%8);
-        this->past_dirs.back().push_back(dir);
+        bee_past_dirs.push_back(dir);
       }
+      this->past_dirs.push_back(bee_past_dirs);
     }
   }
 
