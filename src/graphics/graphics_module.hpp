@@ -33,6 +33,7 @@ private:
   float screen_ratio;
   float screen_scale;
   bool is_init;
+  bool qr_enabled;
   Particle* ParticlesContainer;
   GLfloat* g_particule_position_size_data;
   GLfloat* g_particule_stage_data;
@@ -42,6 +43,7 @@ private:
   GLuint TextureID;
   GLuint programID;
   GLuint Texture;
+  GLuint QRTexture;
   GLuint VertexArrayID;
   GLuint CameraRight_worldspace_ID;
   GLuint CameraUp_worldspace_ID;
@@ -55,6 +57,7 @@ public:
                   const char* vertexshader_fp,
                   const char* fragmentshader_fp);
   int update_particles(vector<int> x, vector<int> y, vector<int> stage, vector<int> direction);
+  void update_qr(bool enabled, const char* qrcode_fp);
   float to_opengl_world_x(int x);
   float to_opengl_world_y(int y);
   void update_display();

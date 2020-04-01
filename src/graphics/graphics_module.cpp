@@ -88,6 +88,9 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
 															 const char* vertexshader_fp,
 														   const char* fragmentshader_fp){
 
+	//turn our qr display off
+	qr_enabled = false;
+
 	//screen scaling factor
 	screen_ratio = (float)maxX/maxY;
 	screen_scale = screenScale;
@@ -253,6 +256,19 @@ int GraphicsModule::update_particles(vector<int> x, vector<int> y, vector<int> s
     ParticlesContainer[i].direction = direction.at(i);
   }
   return 0;
+}
+
+/*
+	adds a qr code found at qrcode_fp to the bottom right of the screen,
+	rendered on the next call to update_display
+
+	enabled : whether the png should be displayed or not
+	qrcode_fp : must contain filename of a png if enabled is set to true
+*/
+void GraphicsModule::update_qr(bool enabled, const char* qrcode_fp){
+	if(enabled)
+		QRTexture = load_png(qrcode_fp);
+	qr_enabled = enabled;
 }
 
 /*
