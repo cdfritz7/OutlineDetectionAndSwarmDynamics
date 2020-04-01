@@ -267,7 +267,7 @@ int GraphicsModule::update_particles(vector<int> x, vector<int> y, vector<int> s
 */
 void GraphicsModule::update_qr(bool enabled, const char* qrcode_fp){
 	if(enabled)
-		QRTexture = load_png(qrcode_fp);
+		QRTexture = loadPNG(qrcode_fp);
 	qr_enabled = enabled;
 }
 
