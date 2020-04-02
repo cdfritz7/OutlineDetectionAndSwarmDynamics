@@ -188,7 +188,7 @@ public:
 
   float get_potential(cv::Point p){
     float cur_potential = 0;
-    int resistance_str = 1000;
+    int resistance_str = 2000; 
     int attraction_str = 10000;
     int bee_stride = 32;//10;//20;//36;
     int flower_stride = 1;

@@ -89,7 +89,6 @@ int main(int argc, char **argv) {
 		for(int i = 0; i < argc; i++){
 			if(String(argv[i]).compare("-bees")==0 && argc>(i+1) && isInteger(argv[i+1])){
 				num_bees = stoi(String(argv[i+1]));
-				break;
 			}
 
       if(String(argv[i]).compare("-time")==0){
@@ -208,7 +207,7 @@ int main(int argc, char **argv) {
 
 		//flatten contours and add as "flowers" to bee_handle
 		bee_handle.add_flowers(flat_contours);
-		bee_handle.update_movement(3);
+		bee_handle.update_movement(2);
 
 		//get bee positions
 		bee_positions.clear();
