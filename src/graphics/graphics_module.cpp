@@ -78,15 +78,14 @@ params:
 	                  matrix
   float beeSize : how big each of the particles should be
 	char* texture_fp : the file path to the texture (must be a .png)
-	char* vertexshader_fp : the file path of the vertex shader
-	char* fragment shader_fp: the file path of the fragment shader
+	char* module_dir : the path to graphics_module.cpp relative to the caller
+	                   of the constructor
 */
 GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
 	                             int screenScale,
 															 float beeSize,
 															 const char* texture_fp,
-															 const char* vertexshader_fp,
-														   const char* fragmentshader_fp){
+															 const char* module_dir){
 
 	//turn our qr display off
 	qr_enabled = false;
@@ -149,7 +148,12 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
   }
 
 	// Create and compile our GLSL program from the shaders
-  programID = LoadShaders(vertexshader_fp, fragmentshader_fp);
+	string mdir = string(module_dir);
+	if(mdir.substr(mdir.length()-1, mdir.length()-1) != "/")
+		mdir = mdir + "/";
+
+  programID = LoadShaders((mdir+"Particle.vertexshader").c_str(),
+	                        (mdir+"Particle.fragmentshader").c_str());
 	if(programID == 0){
     getchar();
 		glfwTerminate();
@@ -229,6 +233,9 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
   // Initialize with empty (NULL) buffer : it will be updated later, each frame.
   glBufferData(GL_ARRAY_BUFFER, MaxParticles * 2 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
 
+	//initialize our QR code variables
+	init_qr(mdir);
+
 	is_init = true;
 }
 
@@ -259,6 +266,40 @@ int GraphicsModule::update_particles(vector<int> x, vector<int> y, vector<int> s
 }
 
 /*
+	initializes the values needed to render a QR code, called in
+	GraphicsModule constructor
+
+	input -> module_dir : the location of the graphics module wrt the calling
+		                    program, should end with a '/'
+*/
+void GraphicsModule::init_qr(string module_dir){
+
+	//load our shaders for the qr code
+	QRProgramID = LoadShaders ( (module_dir+"QR.vertexshader").c_str(),
+	                            (module_dir+"QR.fragmentshader").c_str() );
+
+	//get handlers for variables that we will pass into our vertex shaders
+	QRCameraRight_worldspace_ID  = glGetUniformLocation(programID, "CameraRight_worldspace");
+  QRCameraUp_worldspace_ID  = glGetUniformLocation(programID, "CameraUp_worldspace");
+	QRViewProjMatrixID = glGetUniformLocation(programID, "VP");
+	QRPosID = glGetUniformLocation(programID, "QRPos");
+	QRBillboardSizeID = glGetUniformLocation(programID, "QRSize");
+
+	//create texture sampler for QR code
+	QRTextureID  = glGetUniformLocation(programID, "myTextureSampler");
+}
+
+/*
+	renders the QR code using the QR texture that was uploaded during updateQR
+	updateQR must be called before this function
+*/
+void GraphicsModule::render_qr(){
+	if(!qr_enabled)
+		return;
+
+}
+
+/*
 	adds a qr code found at qrcode_fp to the bottom right of the screen,
 	rendered on the next call to update_display
 
@@ -270,6 +311,7 @@ void GraphicsModule::update_qr(bool enabled, const char* qrcode_fp){
 		QRTexture = loadPNG(qrcode_fp);
 	qr_enabled = enabled;
 }
+
 
 /*
 update the window created by the instantiated GraphicsModule

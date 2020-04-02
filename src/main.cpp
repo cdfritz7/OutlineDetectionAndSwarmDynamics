@@ -152,8 +152,7 @@ int main(int argc, char **argv) {
 	GraphicsModule gm (num_bees, down_width, down_height,
 		                 scale, bee_size/10.0f,
 		                 "./graphics/abee.png",
-	                   "./graphics/Particle.vertexshader",
-										 "./graphics/Particle.fragmentshader");
+	                   "./graphics/");
 	vector<int> bee_x (num_bees);
 	vector<int> bee_y (num_bees);
 	vector<int> bee_stage (num_bees);
