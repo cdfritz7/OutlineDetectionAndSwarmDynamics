@@ -74,6 +74,7 @@ public:
   void update_display();
   void cleanup();
   bool should_close();
+  static void screenshot_ppm(const char *filename, unsigned int width, unsigned int height, GLubyte **pixels);
 };
 
 #endif

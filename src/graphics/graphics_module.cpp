@@ -23,6 +23,7 @@ using namespace std;
 #include "common/controls.hpp"
 #include "graphics_module.hpp"
 
+static GLubyte *pixels = NULL;
 // CPU representation of a particle
 typedef struct Particle{
 	glm::vec3 pos, speed;
@@ -451,6 +452,7 @@ void GraphicsModule::update_display(){
 
   // Swap buffers
   glfwSwapBuffers(window);
+	screenshot_ppm("test", max_x, max_y, &pixels);
   glfwPollEvents();
 }
 
@@ -458,7 +460,7 @@ void GraphicsModule::update_display(){
 free the resources used by the graphics module
 */
 void GraphicsModule::cleanup(){
-
+  free(pixels);
 	if(!is_init)
 		return;
 
@@ -488,4 +490,26 @@ bool GraphicsModule::should_close(){
 
 	return !(glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
 		     glfwWindowShouldClose(window) == 0 );
+}
+
+
+void GraphicsModule::screenshot_ppm(const char *filename, unsigned int width,
+			 unsigned int height, GLubyte **pixels) {
+	 if(pixels == NULL) {
+		 *pixels = (GLubyte*)malloc(3*sizeof(GLubyte)*width*height);
+	 }
+	 size_t i, j, cur;
+	 const size_t format_nchannels = 3;
+	 FILE *f = fopen(filename, "w");
+	 fprintf(f, "P3\n%d %d\n%d\n", width, height, 255);
+	 *pixels = (GLubyte*)realloc(*pixels, format_nchannels * sizeof(GLubyte) * width * height);
+	 glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, *pixels);
+	 for (i = 0; i < height; i++) {
+			 for (j = 0; j < width; j++) {
+					 cur = format_nchannels * ((height - i - 1) * width + j);
+					 fprintf(f, "%3d %3d %3d ", (*pixels)[cur], (*pixels)[cur + 1], (*pixels)[cur + 2]);
+			 }
+			 fprintf(f, "\n");
+	 }
+	 fclose(f);
 }
