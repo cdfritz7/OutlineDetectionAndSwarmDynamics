@@ -60,6 +60,7 @@ private:
   GLuint QRTextureID;
   void init_qr(string mdir);
   void render_qr();
+  void static init(void);
 
 public:
   void SortParticles();
@@ -74,7 +75,8 @@ public:
   void update_display();
   void cleanup();
   bool should_close();
-  static void screenshot_ppm(const char *filename, unsigned int width, unsigned int height, GLubyte **pixels);
+  bool record;
+  // static void screenshot_ppm(const char *filename, unsigned int width, unsigned int height, GLubyte **pixels);
 };
 
 #endif
