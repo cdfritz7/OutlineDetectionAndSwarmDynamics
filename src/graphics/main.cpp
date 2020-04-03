@@ -9,8 +9,8 @@ using namespace std;
 int main( void ){
   int maxX = 500;
   int maxY = 1000;
-  GraphicsModule gm (4, maxX, maxY, 1, 2.0f, "./up2.png",
-                     "./Particle.vertexshader", "./Particle.fragmentshader");
+  GraphicsModule gm (4, maxX, maxY, 1, 2.0f,
+                     "abee.png", "./");
 
   int bee_x_arr[] = {0, maxX, maxX, 0};
   int bee_y_arr[] = {0, 0, maxY, maxY};
