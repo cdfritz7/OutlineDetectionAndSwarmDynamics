@@ -23,7 +23,27 @@ using namespace std;
 #include "common/controls.hpp"
 #include "graphics_module.hpp"
 
+extern "C" {
+	#include <libavcodec/avcodec.h>
+	#include <libavutil/imgutils.h>
+	#include <libavutil/opt.h>
+	#include <libswscale/swscale.h>
+}
 static GLubyte *pixels = NULL;
+static GLuint fbo;
+static GLuint rbo_color;
+static GLuint rbo_depth;
+static int offscreen = 1;
+static unsigned int max_nframes = 128;
+static unsigned int nframes = 0;
+static unsigned int height = 128;
+static unsigned int width = 128;
+static AVCodecContext *c = NULL;
+static AVFrame *frame;
+static AVPacket pkt;
+static FILE *file;
+static struct SwsContext *sws_context = NULL;
+static uint8_t *rgb = NULL;
 // CPU representation of a particle
 typedef struct Particle{
 	glm::vec3 pos, speed;
@@ -90,7 +110,7 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
 
 	//turn our qr display off
 	qr_enabled = false;
-
+	record = false;
 	//screen scaling factor
 	screen_ratio = (float)maxX/maxY;
 	screen_scale = screenScale;
@@ -452,7 +472,13 @@ void GraphicsModule::update_display(){
 
   // Swap buffers
   glfwSwapBuffers(window);
-	screenshot_ppm("test", max_x, max_y, &pixels);
+	if(!(glfwGetKey(window, GLFW_KEY_R) != GLFW_PRESS)) {
+		record = true;
+		init();
+	} else if (record == true) {
+		fprintf(stdout, "i would record here");
+		// screenshot_ppm("test", max_x, max_y, &pixels);
+	}
   glfwPollEvents();
 }
 
@@ -460,7 +486,7 @@ void GraphicsModule::update_display(){
 free the resources used by the graphics module
 */
 void GraphicsModule::cleanup(){
-  free(pixels);
+  // if(pixels != NULL) free(pixels);
 	if(!is_init)
 		return;
 
@@ -492,24 +518,109 @@ bool GraphicsModule::should_close(){
 		     glfwWindowShouldClose(window) == 0 );
 }
 
+void GraphicsModule::init(void)  {
+    int glget;
 
-void GraphicsModule::screenshot_ppm(const char *filename, unsigned int width,
-			 unsigned int height, GLubyte **pixels) {
-	 if(pixels == NULL) {
-		 *pixels = (GLubyte*)malloc(3*sizeof(GLubyte)*width*height);
-	 }
-	 size_t i, j, cur;
-	 const size_t format_nchannels = 3;
-	 FILE *f = fopen(filename, "w");
-	 fprintf(f, "P3\n%d %d\n%d\n", width, height, 255);
-	 *pixels = (GLubyte*)realloc(*pixels, format_nchannels * sizeof(GLubyte) * width * height);
-	 glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, *pixels);
-	 for (i = 0; i < height; i++) {
-			 for (j = 0; j < width; j++) {
-					 cur = format_nchannels * ((height - i - 1) * width + j);
-					 fprintf(f, "%3d %3d %3d ", (*pixels)[cur], (*pixels)[cur + 1], (*pixels)[cur + 2]);
-			 }
-			 fprintf(f, "\n");
-	 }
-	 fclose(f);
+    /*  Framebuffer */
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    /* Color renderbuffer. */
+    glGenRenderbuffers(1, &rbo_color);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo_color);
+    /* Storage must be one of: */
+    /* GL_RGBA4, GL_RGB565, GL_RGB5_A1, GL_DEPTH_COMPONENT16, GL_STENCIL_INDEX8. */
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGB565, width, height);
+    glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, rbo_color);
+
+    /* Depth renderbuffer. */
+    glGenRenderbuffers(1, &rbo_depth);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo_depth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height);
+    glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo_depth);
+
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+
+    /* Sanity check. */
+    assert(glCheckFramebufferStatus(GL_FRAMEBUFFER));
+    glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &glget);
+    assert(width < (unsigned int)glget);
+    assert(height < (unsigned int)glget);
+
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glEnable(GL_DEPTH_TEST);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glViewport(0, 0, width, height);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+
+		const char *filename = "tmp.mpg";
+		AVCodec *codec;
+    int ret;
+    avcodec_register_all();
+    codec = avcodec_find_encoder(AV_CODEC_ID_MPEG1VIDEO);
+    if (!codec) {
+        fprintf(stderr, "Codec not found\n");
+        exit(1);
+    }
+    c = avcodec_alloc_context3(codec);
+    if (!c) {
+        fprintf(stderr, "Could not allocate video codec context\n");
+        exit(1);
+    }
+    c->bit_rate = 400000;
+    c->width = width;
+    c->height = height;
+    c->time_base.num = 1;
+    c->time_base.den = 25;
+    c->gop_size = 10;
+    c->max_b_frames = 1;
+    c->pix_fmt = AV_PIX_FMT_YUV420P;
+
+    if (avcodec_open2(c, codec, NULL) < 0) {
+        fprintf(stderr, "Could not open codec\n");
+        exit(1);
+    }
+    file = fopen(filename, "wb");
+    if (!file) {
+        fprintf(stderr, "Could not open %s\n", filename);
+        exit(1);
+    }
+    frame = av_frame_alloc();
+    if (!frame) {
+        fprintf(stderr, "Could not allocate video frame\n");
+        exit(1);
+    }
+    frame->format = c->pix_fmt;
+    frame->width  = c->width;
+    frame->height = c->height;
+    ret = av_image_alloc(frame->data, frame->linesize, c->width, c->height, c->pix_fmt, 32);
+    if (ret < 0) {
+        fprintf(stderr, "Could not allocate raw picture buffer\n");
+        exit(1);
+    }
+
+		fprintf(stdout, "made it through init function");
 }
+
+// void GraphicsModule::screenshot_ppm(const char *filename, unsigned int width,
+// 			 unsigned int height, GLubyte **pixels) {
+// 	 if(pixels == NULL) {
+// 		 *pixels = (GLubyte*)malloc(3*sizeof(GLubyte)*width*height);
+// 	 }
+// 	 size_t i, j, cur;
+// 	 const size_t format_nchannels = 3;
+// 	 FILE *f = fopen(filename, "w");
+// 	 fprintf(f, "P3\n%d %d\n%d\n", width, height, 255);
+// 	 *pixels = (GLubyte*)realloc(*pixels, format_nchannels * sizeof(GLubyte) * width * height);
+// 	 glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, *pixels);
+// 	 for (i = 0; i < height; i++) {
+// 			 for (j = 0; j < width; j++) {
+// 					 cur = format_nchannels * ((height - i - 1) * width + j);
+// 					 fprintf(f, "%3d %3d %3d ", (*pixels)[cur], (*pixels)[cur + 1], (*pixels)[cur + 2]);
+// 			 }
+// 			 fprintf(f, "\n");
+// 	 }
+// 	 fclose(f);
+// }
