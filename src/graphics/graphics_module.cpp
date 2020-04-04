@@ -104,7 +104,11 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
 		max_y = scale*maxY/2.0f; max_x = scale*maxX/2.0f;
 	}
   min_x = -max_x; min_y = -max_y;
-	avconv = popen("sudo avconv -y -f rawvideo -s 1000x1200 -pix_fmt rgb24 -r 25 -i - -vf vflip -an -b:v 1000k test.mp4", "w");
+	std::string width = std::to_string((int)(max_x*200));
+	std::string height = std::to_string((int)(max_y*200));
+	std::string cmd = "sudo avconv -y -f rawvideo -s "+width+"x"+height+" -pix_fmt rgb24 -r 25 -i - -vf vflip -an -b:v 1000k test.mp4";
+	fprintf(stderr, cmd.c_str());
+	avconv = popen(cmd.c_str(), "w");
 	if(avconv == NULL) {
 		fprintf(stderr, "Could not open video file");
 		return;
@@ -460,10 +464,10 @@ void GraphicsModule::update_display(){
 	if(!(glfwGetKey(window, GLFW_KEY_R) != GLFW_PRESS)) {
 		record = true;
 	} else if (record == true) {
-		void *pixels = malloc(1000*1200*3);
-		glReadPixels(0, 0, 1000, 1200, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+		void *pixels = malloc((int)((max_x*200)*(max_y*200)*3));
+		glReadPixels(0, 0, (int)(max_x*200), (int)(max_y*200), GL_RGB, GL_UNSIGNED_BYTE, pixels);
 		if (avconv)
-    	fwrite(pixels ,1000*1200*3 , 1, avconv);
+    	fwrite(pixels, (int)(max_x*200*max_y*200*3), 1, avconv);
 		free(pixels);
 	}
   glfwPollEvents();
