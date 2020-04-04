@@ -76,7 +76,6 @@ public:
   void cleanup();
   bool should_close();
   bool record;
-  // static void screenshot_ppm(const char *filename, unsigned int width, unsigned int height, GLubyte **pixels);
 };
 
 #endif
