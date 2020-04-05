@@ -12,6 +12,8 @@
 #include <GLFW/glfw3.h>
 GLFWwindow* window;
 FILE *avconv = NULL;
+int frames_total = 1000;
+int frame_count = 0;
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -105,7 +107,7 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
 	}
   min_x = -max_x; min_y = -max_y;
 	std::string width = std::to_string((int)(max_x*200));
-	std::string height = std::to_string((int)(max_y*200));
+	std::string height = std::to_string((int)(max_y*300));
 	std::string cmd = "sudo avconv -y -f rawvideo -s "+width+"x"+height+" -pix_fmt rgb24 -r 25 -i - -vf vflip -an -b:v 1000k test.mp4";
 	fprintf(stderr, cmd.c_str());
 	avconv = popen(cmd.c_str(), "w");
@@ -463,12 +465,18 @@ void GraphicsModule::update_display(){
   glfwSwapBuffers(window);
 	if(!(glfwGetKey(window, GLFW_KEY_R) != GLFW_PRESS)) {
 		record = true;
-	} else if (record == true) {
-		void *pixels = malloc((int)((max_x*200)*(max_y*200)*3));
-		glReadPixels(0, 0, (int)(max_x*200), (int)(max_y*200), GL_RGB, GL_UNSIGNED_BYTE, pixels);
+		frame_count = 0;
+	} else if (record == true && frame_count%2 == 0) {//only save even frames?
+		frame_count++;
+		void *pixels = malloc((int)((max_x*200)*(max_y*300)*3));
+		glReadPixels(0, 0, (int)(max_x*200), (int)(max_y*300), GL_RGB, GL_UNSIGNED_BYTE, pixels);
 		if (avconv)
-    	fwrite(pixels, (int)(max_x*200*max_y*200*3), 1, avconv);
+    	fwrite(pixels, (int)(max_x*200*max_y*300*3), 1, avconv);
 		free(pixels);
+	} else if(record == true){ frame_count++; }
+
+	if(frame_count >= frames_total) {
+		record = false;
 	}
   glfwPollEvents();
 }
