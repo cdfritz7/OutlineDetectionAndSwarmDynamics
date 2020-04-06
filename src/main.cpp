@@ -111,9 +111,9 @@ int main(int argc, char **argv) {
 	//create bee handler for calculating bee dynamics
 	BeeHandle bee_handle = BeeHandle(down_width, down_height);
 	bee_handle.add_bees(num_bees);
-	num_sound_bees = num_bees/20;
+	int num_sound_bees = num_bees/20;
 	
-	AudioHandler audio = AudioHandler(num_sound_bees);
+	AudioHandler audio = AudioHandler((int)num_sound_bees);
 	
 	//seed our random number generator
 	RNG rng(1235);
@@ -233,7 +233,8 @@ int main(int argc, char **argv) {
 		landed = bee_handle.get_landed();
 		for(int i = 0; i < landed.size(); i++){
 			if(landed.at(i) == 1){
-				audio.play(i);
+				printf("woop");
+				audio.play_sound(i);
 			}
 		}
 
@@ -259,7 +260,7 @@ int main(int argc, char **argv) {
 	}
 
 	//clean up everything we have
-	a.delete_sources();
+	audio.delete_sources();
 	device.stopVideo();
 	device.stopDepth();
 	finalFrame.release();

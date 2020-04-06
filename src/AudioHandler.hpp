@@ -53,7 +53,7 @@ private:
 	const ALCchar *devices;
 	const ALCchar *defaultDeviceName;
 	int ret;
-	int sound_bees
+	int sound_bees;
 	char *bufferData;
 	ALCdevice *device;
 	ALvoid *data;
@@ -68,7 +68,7 @@ private:
 
 public:
 	AudioHandler(int num_sound_bees){
-		sound_bees = num_sound_bees
+		sound_bees = num_sound_bees;
 		ALfloat listenerOri[] = { 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f };
 		enumeration = alcIsExtensionPresent(NULL, "ALC_ENUMERATION_EXT");
 		if (enumeration == AL_FALSE)
@@ -76,8 +76,7 @@ public:
 
 		list_audio_devices(alcGetString(NULL, ALC_DEVICE_SPECIFIER));
 
-		if (!defaultDeviceName)
-			defaultDeviceName = alcGetString(NULL, ALC_DEFAULT_DEVICE_SPECIFIER);
+		defaultDeviceName = alcGetString(NULL, ALC_DEFAULT_DEVICE_SPECIFIER);
 
 		device = alcOpenDevice(defaultDeviceName);
 		if (!device) {
@@ -108,7 +107,7 @@ public:
 		for(int i=0;i<num_sound_bees;i++){
 			alSourcef(source[i], AL_PITCH, 1);
 			TEST_ERROR("source pitch");
-			alSourcef(source[i], AL_GAIN, 5);
+			alSourcef(source[i], AL_GAIN, 1);
 			TEST_ERROR("source gain");
 			alSource3f(source[i], AL_POSITION, 0, 0, 0);
 			TEST_ERROR("source position");
@@ -128,7 +127,7 @@ public:
 			char flnm[] = ".wav";
 			strcat(str,flnm);
 
-			alutLoadWAVFile(str, &format, &data, &size, &freq, (ALboolean*)&loop);
+			alutLoadWAVFile("1.wav", &format, &data, &size, &freq, (ALboolean*)&loop);
 			TEST_ERROR("loading wav file");
 
 			alBufferData(buffer[i-1], format, data, size, freq);
