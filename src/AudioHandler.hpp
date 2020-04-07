@@ -6,7 +6,8 @@
 #include <inttypes.h>
 #include <unistd.h>
 #include <stdbool.h>
-
+#include <vector>
+#include <math.h>
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <AL/alut.h>
@@ -61,7 +62,7 @@ private:
 	ALsizei size, freq;
 	ALenum format;
 	ALuint buffer[16];
-	ALuint source[16];	
+	ALuint* source;	
 	ALboolean loop = AL_FALSE;
 	ALCenum error;
 	ALint source_state;
@@ -69,6 +70,7 @@ private:
 public:
 	AudioHandler(int num_sound_bees){
 		sound_bees = num_sound_bees;
+		source = (ALuint*)malloc(sizeof(ALuint)*sound_bees);
 		ALfloat listenerOri[] = { 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f };
 		enumeration = alcIsExtensionPresent(NULL, "ALC_ENUMERATION_EXT");
 		if (enumeration == AL_FALSE)
@@ -140,10 +142,11 @@ public:
 		}
 	}
 	
-	void play_sound(int i){
+	void play_sound(int i){	
 		alGetSourcei(source[i], AL_SOURCE_STATE, &source_state);
 		TEST_ERROR("source state get");
 		if(source_state != AL_PLAYING) {
+			printf("bing");
 			alSourcePlay(source[i]);
 		}
 		

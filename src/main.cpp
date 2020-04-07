@@ -233,7 +233,6 @@ int main(int argc, char **argv) {
 		landed = bee_handle.get_landed();
 		for(int i = 0; i < landed.size(); i++){
 			if(landed.at(i) == 1){
-				printf("woop");
 				audio.play_sound(i);
 			}
 		}
