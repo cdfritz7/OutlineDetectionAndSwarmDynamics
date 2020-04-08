@@ -37,6 +37,7 @@ private:
   Particle* ParticlesContainer;
   GLfloat* g_particule_position_size_data;
   GLfloat* g_particule_stage_data;
+
   //for bees
   GLuint particles_position_buffer;
   GLuint billboard_vertex_buffer;
@@ -62,6 +63,13 @@ private:
   void render_qr();
   void static init(void);
 
+  //for video recording
+  FILE *ffmpeg;
+  bool record;
+  int frame_total;
+  int frame_count;
+  string cmd;
+
 public:
   void SortParticles();
   GraphicsModule( int num_particles, int maxX, int maxY,
@@ -75,7 +83,6 @@ public:
   void update_display();
   void cleanup();
   bool should_close();
-  bool record;
 };
 
 #endif

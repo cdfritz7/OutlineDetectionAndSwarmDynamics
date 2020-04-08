@@ -11,9 +11,6 @@
 
 #include <GLFW/glfw3.h>
 GLFWwindow* window;
-FILE *avconv = NULL;
-int frames_total = 1000;
-int frame_count = 0;
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -90,9 +87,13 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
 															 const char* texture_fp,
 															 const char* module_dir){
 
-	//turn our qr display off
+	//variables for qr, recording and text
 	qr_enabled = false;
 	record = false;
+	ffmpeg = NULL;
+	frame_count = 0;
+	frame_total = 250;
+
 	//screen scaling factor
 	screen_ratio = (float)maxX/maxY;
 	screen_scale = screenScale;
@@ -105,16 +106,14 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
 	  scale = 20.0f/maxY;
 		max_y = scale*maxY/2.0f; max_x = scale*maxX/2.0f;
 	}
+
   min_x = -max_x; min_y = -max_y;
 	std::string width = std::to_string((int)(max_x*200));
 	std::string height = std::to_string((int)(max_y*300));
-	std::string cmd = "sudo avconv -y -f rawvideo -s "+width+"x"+height+" -pix_fmt rgb24 -r 25 -i - -vf vflip -an -b:v 1000k test.mp4";
-	fprintf(stderr, cmd.c_str());
-	avconv = popen(cmd.c_str(), "w");
-	if(avconv == NULL) {
-		fprintf(stderr, "Could not open video file");
-		return;
-	}
+	//std::string cmd = "sudo avconv -y -f rawvideo -s "+width+"x"+height+" -pix_fmt rgb24 -r 25 -i - -vf vflip -an -b:v 1000k test.mp4";
+	//fprintf(stderr, cmd.c_str());
+	cmd = "sudo ffmpeg -r 25 -f rawvideo -pix_fmt rgb24 -s "+width+"x"+height+" -i - "
+                    "-threads 0 -preset fast -y -pix_fmt yuv420p -crf 21 -vf vflip -an test.mp4";
 
 	camera_position = glm::vec3(0, 0, 30/screen_ratio);
 	MaxParticles = num_particles;
@@ -463,21 +462,38 @@ void GraphicsModule::update_display(){
 
   // Swap buffers
   glfwSwapBuffers(window);
-	if(!(glfwGetKey(window, GLFW_KEY_R) != GLFW_PRESS)) {
+
+	//video recording
+	if((glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) && !record) {
 		record = true;
 		frame_count = 0;
-	} else if (record == true && frame_count%2 == 0) {//only save even frames?
-		frame_count++;
-		void *pixels = malloc((int)((max_x*200)*(max_y*300)*3));
-		glReadPixels(0, 0, (int)(max_x*200), (int)(max_y*300), GL_RGB, GL_UNSIGNED_BYTE, pixels);
-		if (avconv)
-    	fwrite(pixels, (int)(max_x*200*max_y*300*3), 1, avconv);
-		free(pixels);
-	} else if(record == true){ frame_count++; }
 
-	if(frame_count >= frames_total) {
-		record = false;
+		cout<<cmd;
+		ffmpeg = popen(cmd.c_str(), "w");
+		if(ffmpeg == NULL) {
+			fprintf(stderr, "Could not open video file");
+			return;
+		}
+
+	} else if (record == true) {//only save even frames?
+		frame_count++;
+
+		if(frame_count%2 == 0){
+			void *pixels = malloc((int)((max_x*200)*(max_y*300)*3));
+			glReadPixels(0, 0, (int)(max_x*200), (int)(max_y*300), GL_RGB, GL_UNSIGNED_BYTE, pixels);
+
+			if (ffmpeg)
+	    	fwrite(pixels, (int)(max_x*200*max_y*300*3), 1, ffmpeg);
+			free(pixels);
+		}
 	}
+
+	if(frame_count >= frame_total) {
+		frame_count = 0;
+		record = false;
+		pclose(ffmpeg);
+	}
+
   glfwPollEvents();
 }
 
@@ -487,9 +503,6 @@ free the resources used by the graphics module
 void GraphicsModule::cleanup(){
 	if(!is_init)
 		return;
-
-	if (avconv)
-	  pclose(avconv);
 
   free(ParticlesContainer);
 
