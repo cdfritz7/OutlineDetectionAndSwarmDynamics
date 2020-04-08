@@ -163,8 +163,8 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
 	if(mdir.substr(mdir.length()-1, mdir.length()-1) != "/")
 		mdir = mdir + "/";
 
-  programID = LoadShaders((mdir+"Particle.vertexshader").c_str(),
-	                        (mdir+"Particle.fragmentshader").c_str());
+  programID = LoadShaders((mdir+"shaders/Particle.vertexshader").c_str(),
+	                        (mdir+"shaders/Particle.fragmentshader").c_str());
 	if(programID == 0){
     getchar();
 		glfwTerminate();
@@ -286,18 +286,29 @@ int GraphicsModule::update_particles(vector<int> x, vector<int> y, vector<int> s
 void GraphicsModule::init_qr(string module_dir){
 
 	//load our shaders for the qr code
-	QRProgramID = LoadShaders ( (module_dir+"QR.vertexshader").c_str(),
-	                            (module_dir+"QR.fragmentshader").c_str() );
+	QRProgramID = LoadShaders ( (module_dir+"shaders/QR.vertexshader").c_str(),
+	                            (module_dir+"shaders/QR.fragmentshader").c_str() );
 
 	//get handlers for variables that we will pass into our vertex shaders
-	QRCameraRight_worldspace_ID  = glGetUniformLocation(programID, "CameraRight_worldspace");
-  QRCameraUp_worldspace_ID  = glGetUniformLocation(programID, "CameraUp_worldspace");
-	QRViewProjMatrixID = glGetUniformLocation(programID, "VP");
-	QRPosID = glGetUniformLocation(programID, "QRPos");
-	QRBillboardSizeID = glGetUniformLocation(programID, "QRSize");
+	QRCameraRight_worldspace_ID  = glGetUniformLocation(QRProgramID, "CameraRight_worldspace");
+  QRCameraUp_worldspace_ID  = glGetUniformLocation(QRProgramID, "CameraUp_worldspace");
+	QRViewProjMatrixID = glGetUniformLocation(QRProgramID, "VP");
+	QRPosID = glGetUniformLocation(QRProgramID, "QRPos");
+	QRSizeID = glGetUniformLocation(QRProgramID, "QRSize");
 
 	//create texture sampler for QR code
-	QRTextureID  = glGetUniformLocation(programID, "myTextureSampler");
+	QRTextureID  = glGetUniformLocation(QRProgramID, "myTextureSampler");
+
+	//VBO containing 4 vertices for the qr code
+	const static GLfloat g_vertex_buffer_data[] = {
+		-0.5f, -0.5f, 0.0f,
+		 0.5f, -0.5f, 0.0f,
+		-0.5f,  0.5f, 0.0f,
+		 0.5f,  0.5f, 0.0f,
+	};
+	glGenBuffers(1, &qr_vertex_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, qr_vertex_buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_DYNAMIC_DRAW);
 }
 
 /*
@@ -308,6 +319,27 @@ void GraphicsModule::render_qr(){
 	if(!qr_enabled)
 		return;
 
+	glDisable(GL_BLEND);
+
+	glUseProgram(QRProgramID);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, QRTexture);
+	glUniform1i(QRTextureID, 0);
+
+	glUniform3f(QRCameraRight_worldspace_ID, ViewMatrix[0][0], ViewMatrix[1][0], ViewMatrix[2][0]);
+	glUniform3f(QRCameraUp_worldspace_ID, ViewMatrix[0][1], ViewMatrix[1][1], ViewMatrix[2][1]);
+
+	glUniform3f(QRPosID, (float)qr_x, (float)qr_y, 1.0f);
+	glUniform2f(QRSizeID, (float)qr_size, (float)qr_size);
+
+	glUniformMatrix4fv(QRViewProjMatrixID, 1, GL_FALSE, &ViewProjectionMatrix[0][0]);
+
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, qr_vertex_buffer);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0 );
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glDisableVertexAttribArray(0);
 }
 
 /*
@@ -317,9 +349,14 @@ void GraphicsModule::render_qr(){
 	enabled : whether the png should be displayed or not
 	qrcode_fp : must contain filename of a png if enabled is set to true
 */
-void GraphicsModule::update_qr(bool enabled, const char* qrcode_fp){
-	if(enabled)
+void GraphicsModule::update_qr(bool enabled, const char* qrcode_fp, int x, int y, int size){
+	qr_was_enabled = true;
+	if(enabled && !qr_enabled){
 		QRTexture = loadPNG(qrcode_fp);
+		qr_x = to_opengl_world_x(x);
+		qr_y = to_opengl_world_y(y);
+		qr_size = size;
+	}
 	qr_enabled = enabled;
 }
 
@@ -337,7 +374,7 @@ void GraphicsModule::update_display(){
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // Camera matrix
-  glm::mat4 ViewMatrix = glm::lookAt(
+  ViewMatrix = glm::lookAt(
                 camera_position,
                 glm::vec3(0,0,0), // and looks at the origin
                 glm::vec3(0,-1,0)  // Head is up (set to 0,-1,0 to look upside-down)
@@ -350,7 +387,10 @@ void GraphicsModule::update_display(){
   // There should be a getCameraPosition() function in common/controls.cpp,
   // but this works too.
   glm::vec3 CameraPosition(glm::inverse(ViewMatrix)[3]);
-  glm::mat4 ViewProjectionMatrix = ProjectionMatrix * ViewMatrix;
+  ViewProjectionMatrix = ProjectionMatrix * ViewMatrix;
+
+	//code to render the QR code to the screen, if it has been enabled
+	render_qr();
 
   // Simulate all particles
   for(int i=0; i<MaxParticles; i++){
@@ -385,7 +425,6 @@ void GraphicsModule::update_display(){
   glBindBuffer(GL_ARRAY_BUFFER, particles_stage_buffer);
   glBufferData(GL_ARRAY_BUFFER, MaxParticles * 2 * sizeof(GLfloat), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
   glBufferSubData(GL_ARRAY_BUFFER, 0, MaxParticles * sizeof(GLfloat) * 2, g_particule_stage_data);
-
 
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -515,6 +554,12 @@ void GraphicsModule::cleanup(){
   glDeleteProgram(programID);
   glDeleteTextures(1, &Texture);
   glDeleteVertexArrays(1, &VertexArrayID);
+
+	if(qr_was_enabled){
+		glDeleteBuffers(1, &qr_vertex_buffer);
+		glDeleteProgram(QRProgramID);
+		glDeleteTextures(1, &QRTexture);
+	}
 
   // Close OpenGL window and terminate GLFW
   glfwTerminate();
