@@ -21,6 +21,15 @@ using namespace std;
 // CPU representation of a particle
 typedef struct Particle Particle;
 
+//struct for holding info about each text object we want to display
+//representation of displayed text
+typedef struct Text {
+	string text;
+	float x;
+	float y;
+	float size;
+} Text;
+
 class GraphicsModule{
 private:
   glm::vec3 camera_position;
@@ -33,10 +42,10 @@ private:
   float screen_ratio;
   float screen_scale;
   bool is_init;
-  bool qr_enabled;
   Particle* ParticlesContainer;
   GLfloat* g_particule_position_size_data;
   GLfloat* g_particule_stage_data;
+
   //for bees
   GLuint particles_position_buffer;
   GLuint billboard_vertex_buffer;
@@ -44,11 +53,11 @@ private:
   GLuint TextureID;
   GLuint programID;
   GLuint Texture;
-  GLuint QRTexture;
-  GLuint VertexArrayID;
   GLuint CameraRight_worldspace_ID;
   GLuint CameraUp_worldspace_ID;
   GLuint ViewProjMatrixID;
+  glm::mat4 ViewMatrix;
+  glm::mat4 ViewProjectionMatrix;
 
   //for QR code
   GLuint QRProgramID;
@@ -56,11 +65,25 @@ private:
   GLuint QRCameraUp_worldspace_ID;
   GLuint QRViewProjMatrixID;
   GLuint QRPosID;
-  GLuint QRBillboardSizeID;
+  GLuint QRSizeID;
   GLuint QRTextureID;
-  void init_qr(string mdir);
-  void render_qr();
-  void static init(void);
+  GLuint QRTexture;
+  GLuint qr_vertex_buffer;
+  int qr_x;
+  int qr_y;
+  int qr_size;
+  bool qr_enabled;
+  bool qr_was_enabled;
+
+  //for text
+  vector<Text> texts;
+
+  //for video recording
+  FILE *ffmpeg;
+  bool record;
+  int frame_total;
+  int frame_count;
+  string cmd;
 
 public:
   void SortParticles();
@@ -69,13 +92,16 @@ public:
                   const char* texture_fp,
                   const char* module_dir);
   int update_particles(vector<int> x, vector<int> y, vector<int> stage, vector<int> direction);
-  void update_qr(bool enabled, const char* qrcode_fp);
+  void init_qr(string mdir);
+  void update_qr(bool enabled, const char* qrcode_fp, int x, int y, int size);
+  void render_qr();
+  void add_text(string text, int x, int y, float size);
+  bool remove_text(string text);
   float to_opengl_world_x(int x);
   float to_opengl_world_y(int y);
   void update_display();
   void cleanup();
   bool should_close();
-  bool record;
 };
 
 #endif

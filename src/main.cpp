@@ -222,6 +222,7 @@ int main(int argc, char **argv) {
 			//bee_dir[i] = (bee_dir[i]+1)%8;
 		}
 		gm.update_particles(bee_x, bee_y, bee_stage, bee_dir);
+    gm.update_qr(true, "./graphics/qr.png", 320, 240, 2.0f);
 		gm.update_display();
 
 		//end timer for bees if timing is enabled
