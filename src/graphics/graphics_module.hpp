@@ -21,6 +21,15 @@ using namespace std;
 // CPU representation of a particle
 typedef struct Particle Particle;
 
+//struct for holding info about each text object we want to display
+//representation of displayed text
+typedef struct Text {
+	string text;
+	float x;
+	float y;
+	float size;
+} Text;
+
 class GraphicsModule{
 private:
   glm::vec3 camera_position;
@@ -44,7 +53,6 @@ private:
   GLuint TextureID;
   GLuint programID;
   GLuint Texture;
-  GLuint VertexArrayID;
   GLuint CameraRight_worldspace_ID;
   GLuint CameraUp_worldspace_ID;
   GLuint ViewProjMatrixID;
@@ -67,6 +75,9 @@ private:
   bool qr_enabled;
   bool qr_was_enabled;
 
+  //for text
+  vector<Text> texts;
+
   //for video recording
   FILE *ffmpeg;
   bool record;
@@ -84,6 +95,8 @@ public:
   void init_qr(string mdir);
   void update_qr(bool enabled, const char* qrcode_fp, int x, int y, int size);
   void render_qr();
+  void add_text(string text, int x, int y, float size);
+  bool remove_text(string text);
   float to_opengl_world_x(int x);
   float to_opengl_world_y(int y);
   void update_display();
