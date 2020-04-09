@@ -6,7 +6,7 @@
 #include <opencv.hpp>
 #include <fstream>
 #include <chrono>
-#include "BeeHandleSimple.hpp"
+#include "BeeHandle.cpp"
 #include "MyFreenectDevice.hpp"
 #include "./graphics/graphics_module.hpp"
 
@@ -71,9 +71,9 @@ int main(int argc, char **argv) {
 	int down_height = 240;
 	int contour_drop = 1; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
-  int scale = 8; //scale for graphics window
+  int scale = 2; //scale for graphics window
   int bee_size = 2; //size of each bee
-	int num_bees = 800; //number of bees
+	int num_bees = 1600; //number of bees
   int bee_total = 0; //time spent on bee module
 	bool time_it = false; //whether we use timing or not
 
@@ -108,8 +108,11 @@ int main(int argc, char **argv) {
   }
 
 	//create bee handler for calculating bee dynamics
-	BeeHandle bee_handle = BeeHandle(down_width, down_height);
-	bee_handle.add_bees(num_bees);
+	BeeHandle bee_handle = BeeHandle(down_width, down_height, 5, 0, 4, 0.75);
+	//bee_handle.add_bees(num_bees);
+  for (int i = 0; i < num_bees; i++){
+    bee_handle.addP();
+  }
 
 	//seed our random number generator
 	RNG rng(1235);
@@ -206,12 +209,15 @@ int main(int argc, char **argv) {
 		}
 
 		//flatten contours and add as "flowers" to bee_handle
-		bee_handle.add_flowers(flat_contours);
-		bee_handle.update_movement(2);
+		//bee_handle.add_flowers(flat_contours);
+    bee_handle.safeReplaceAttractors(flat_contours);
+		bee_handle.updatePoints();
 
 		//get bee positions
 		bee_positions.clear();
-		bee_positions = bee_handle.get_bees();
+		//bee_positions = bee_handle.get_bees();
+    bee_positions = bee_handle.getPoints();
+    //bee_positions = flat_contours;
     bee_dir = bee_handle.get_dirs();
 
 		//update our graphics module
