@@ -11,7 +11,7 @@ main: ./main.cpp ./graphics_module.o ./common/shader.o ./common/objloader.o ./co
 	$(CXX) -c $(CFLAGS) $< -o $@ $(FREE_LIBS)
 
 ./common/text2D.o: ./common/text2D.cpp
-		$(CXX) -c $(CFLAGS) $< -o $@ $(FREE_LIBS)
+	$(CXX) -c $(CFLAGS) $< -o $@ $(FREE_LIBS)
 
 ./common/shader.o: ./common/shader.cpp
 	$(CXX) -c $(CFLAGS) $< -o $@ $(FREE_LIBS)

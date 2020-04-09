@@ -177,7 +177,7 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
   glDepthFunc(GL_LESS);
 
 	//initialize our text variables
-	initText2D( "Holstein.DDS" , mdir.c_str(), max_x, max_y);
+	initText2D( (mdir+"Holstein.DDS").c_str() , mdir.c_str(), max_x, max_y);
 
 	//load shaders for our particles
   programID = LoadShaders((mdir+"shaders/Particle.vertexshader").c_str(),
@@ -463,6 +463,7 @@ void GraphicsModule::update_display(){
 		frame_count = 0;
 		record = false;
 		pclose(ffmpeg);
+		system("sudo node generateQR.js");
 	}
 
   glfwPollEvents();
