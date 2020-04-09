@@ -1,6 +1,5 @@
-*.o
 node_modules/
 token.json
 test.mp4
 main
-graphics/*.o
+./graphics/*.o
