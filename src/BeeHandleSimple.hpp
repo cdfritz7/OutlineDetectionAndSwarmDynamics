@@ -96,7 +96,7 @@ private:
 
       if(newPotential > currPotential){
         bees.at(i) = new_pos;
-        
+
         int dir = x_y_to_dir(move_x, move_y);
         // erase oldest direction
         this->past_dirs.at(i).pop_back();
@@ -190,7 +190,7 @@ public:
     float cur_potential = 0;
     int resistance_str = 2000;
     int attraction_str = 10000;
-    int bee_stride = 32;//10;//20;//36;
+    int bee_stride = 10; 
     int flower_stride = 1;
     int random_off_bee = rand()%bee_stride;
     int random_off_flower = rand()%flower_stride;
