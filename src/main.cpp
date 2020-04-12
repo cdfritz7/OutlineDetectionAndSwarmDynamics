@@ -72,9 +72,11 @@ int main(int argc, char **argv) {
 	int down_height = 240;
 	int contour_drop = 1; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
-  	int scale = 8; //scale for graphics window
- 	int bee_size = 2; //size of each bee
-	int num_bees = 800; //number of bees
+  
+  int scale = 2;//8; //scale for graphics window
+  int bee_size = 2; //size of each bee
+	
+  int num_bees = 800; //number of bees
  	int bee_total = 0; //time spent on bee module
 	bool time_it = false; //whether we use timing or not
 
@@ -165,6 +167,8 @@ int main(int argc, char **argv) {
   // 0 - 7 starting north going clockwise
 	vector<int> bee_dir (num_bees);
 
+  cv::namedWindow("RGB IN", cv::WINDOW_AUTOSIZE);
+  //cv::waitKey(0);
 	//main loop
   do {
 
@@ -179,6 +183,9 @@ int main(int argc, char **argv) {
 		//resize input image and depth for decreased computation
 		cv::resize(rgbIn, rgb_down, Size(down_width, down_height));
 		cv::resize(depthIn, depth_down, Size(down_width, down_height));
+
+    cv::imshow("RGB IN", rgbIn);
+    cv::waitKey(1);
 
 		//normalize depth to 0-255 range and filter every depth past our threshold
 		depth_down.convertTo(depthf, CV_8UC3, 255.0/10000.0); //kinect caps out at 10000 mm

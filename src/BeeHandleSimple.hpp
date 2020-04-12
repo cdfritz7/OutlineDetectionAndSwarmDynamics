@@ -87,13 +87,6 @@ private:
       int newX = (this->bees.at(i).x + move_x*move_dist)%max_x;
       int newY = (this->bees.at(i).y + move_y*move_dist)%max_y;
 
-      int dir = x_y_to_dir(move_x, move_y);
-      // erase oldest direction
-      this->past_dirs.at(i).pop_back();
-      // insert new direction
-      auto it = this->past_dirs.at(i).begin();
-      this->past_dirs.at(i).insert(it, dir);
-
       if(newX < 0)
         newX = max_x-1;
       if(newY < 0)
@@ -105,7 +98,14 @@ private:
       float newPotential = get_potential(new_pos,&did_land2);
       if(newPotential > currPotential){
         bees.at(i) = new_pos;
-
+        
+        int dir = x_y_to_dir(move_x, move_y);
+        // erase oldest direction
+        this->past_dirs.at(i).pop_back();
+        // insert new direction
+        auto it = this->past_dirs.at(i).begin();
+        this->past_dirs.at(i).insert(it, dir);
+        
     		if(did_land2 && i%20 == 0){
     			landed.at(i/20) = landed.at(i/20)+1;
     		}
@@ -215,7 +215,7 @@ public:
     float cur_potential = 0;
     int resistance_str = 2000;
     int attraction_str = 10000;
-    int bee_stride = 32;//10;//20;//36;
+    int bee_stride = 10; 
     int flower_stride = 1;
     int random_off_bee = rand()%bee_stride;
     int random_off_flower = rand()%flower_stride;
