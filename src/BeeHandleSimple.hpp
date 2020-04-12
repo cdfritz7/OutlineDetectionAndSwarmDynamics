@@ -80,8 +80,8 @@ private:
   	int start = bee_per_thread*thread_num;
   	int end = start + bee_per_thread;
   	for(int i=start; i<end; i++) {
-	  bool did_land1 = false;
-	  bool did_land2 = false;
+  	  bool did_land1 = false;
+  	  bool did_land2 = false;
       int move_x = (rand() % 3)-1;
       int move_y = (rand() % 3)-1;
       int newX = (this->bees.at(i).x + move_x*move_dist)%max_x;
@@ -106,22 +106,21 @@ private:
       if(newPotential > currPotential){
         bees.at(i) = new_pos;
 
-		if(did_land2 && i%20 == 0){
-			landed.at(i/20) = landed.at(i/20)+1;
-		}
+    		if(did_land2 && i%20 == 0){
+    			landed.at(i/20) = landed.at(i/20)+1;
+    		}
 
-	  else if(!did_land2 && i%20 == 0){
-			landed.at(i/20) = 0;
-		}
+    	  else if(!did_land2 && i%20 == 0){
+    			landed.at(i/20) = 0;
+    		}
       }
-	  else{
-		if(did_land1 && i%20 == 0){
-			landed.at(i/20) = landed.at(i/20)+1;
-		}
-
-	  	else if(!did_land1 && i%20 == 0){
-			landed.at(i/20) = 0;
-		}
+  	  else {
+    		if(did_land1 && i%20 == 0) {
+    			landed.at(i/20) = landed.at(i/20)+1;
+    		}
+  	  	else if(!did_land1 && i%20 == 0) {
+			     landed.at(i/20) = 0;
+  		  }
       }
 
   	}
@@ -214,7 +213,7 @@ public:
 
   float get_potential(cv::Point p, bool *did_land){
     float cur_potential = 0;
-    int resistance_str = 2000; 
+    int resistance_str = 2000;
     int attraction_str = 10000;
     int bee_stride = 32;//10;//20;//36;
     int flower_stride = 1;
