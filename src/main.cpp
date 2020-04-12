@@ -8,6 +8,7 @@
 #include <chrono>
 #include "BeeHandleSimple.hpp"
 #include "MyFreenectDevice.hpp"
+#include "AudioHandler.hpp"
 #include "./graphics/graphics_module.hpp"
 
 using namespace cv;
@@ -71,10 +72,12 @@ int main(int argc, char **argv) {
 	int down_height = 240;
 	int contour_drop = 1; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
+  
   int scale = 2;//8; //scale for graphics window
   int bee_size = 2; //size of each bee
-	int num_bees = 800; //number of bees
-  int bee_total = 0; //time spent on bee module
+	
+  int num_bees = 800; //number of bees
+ 	int bee_total = 0; //time spent on bee module
 	bool time_it = false; //whether we use timing or not
 
   //set variables for timing
@@ -110,7 +113,10 @@ int main(int argc, char **argv) {
 	//create bee handler for calculating bee dynamics
 	BeeHandle bee_handle = BeeHandle(down_width, down_height);
 	bee_handle.add_bees(num_bees);
-
+	int num_sound_bees = num_bees/20;
+	
+	AudioHandler audio = AudioHandler((int)num_sound_bees);
+	
 	//seed our random number generator
 	RNG rng(1235);
 
@@ -133,6 +139,8 @@ int main(int argc, char **argv) {
 	vector<Vec4i> hierarchy;
 	vector<Point> bee_positions;
 	vector<Point> bee_attractors;
+	vector<int> landed;
+	//vector<bool> bee_trigger;
 
 	//create our connection to the connect
 	Freenect::Freenect freenect;
@@ -217,7 +225,7 @@ int main(int argc, char **argv) {
 		//get bee positions
 		bee_positions.clear();
 		bee_positions = bee_handle.get_bees();
-    bee_dir = bee_handle.get_dirs();
+    	bee_dir = bee_handle.get_dirs();
 
 		//update our graphics module
 		for(int i = 0; i < num_bees; i++){
@@ -228,6 +236,13 @@ int main(int argc, char **argv) {
 		}
 		gm.update_particles(bee_x, bee_y, bee_stage, bee_dir);
 		gm.update_display();
+		
+		landed = bee_handle.get_landed();
+		for(int i = 0; i < landed.size(); i++){
+			if(landed.at(i) == 1){
+				audio.play_sound(i);
+			}
+		}
 
 		//end timer for bees if timing is enabled
 		if(time_it){
@@ -251,6 +266,7 @@ int main(int argc, char **argv) {
 	}
 
 	//clean up everything we have
+	audio.delete_sources();
 	device.stopVideo();
 	device.stopDepth();
 	finalFrame.release();

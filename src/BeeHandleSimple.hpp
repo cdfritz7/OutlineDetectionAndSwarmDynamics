@@ -22,6 +22,7 @@ private:
   thread threads [NUM_THREADS];
   vector<vector<int>> past_dirs;
   vector<int> dirs;
+  vector<int> landed;
 
   void join_threads() {
   	for(int i=0; i<NUM_THREADS; i++) {
@@ -79,6 +80,8 @@ private:
   	int start = bee_per_thread*thread_num;
   	int end = start + bee_per_thread;
   	for(int i=start; i<end; i++) {
+  	  bool did_land1 = false;
+  	  bool did_land2 = false;
       int move_x = (rand() % 3)-1;
       int move_y = (rand() % 3)-1;
       int newX = (this->bees.at(i).x + move_x*move_dist)%max_x;
@@ -91,18 +94,33 @@ private:
 
       cv::Point new_pos = cv::Point(newX, newY);
 
-      float currPotential = get_potential(this->bees.at(i));
-      float newPotential = get_potential(new_pos);
-
+      float currPotential = get_potential(this->bees.at(i),&did_land1);
+      float newPotential = get_potential(new_pos,&did_land2);
       if(newPotential > currPotential){
         bees.at(i) = new_pos;
-
+        
         int dir = x_y_to_dir(move_x, move_y);
         // erase oldest direction
         this->past_dirs.at(i).pop_back();
         // insert new direction
         auto it = this->past_dirs.at(i).begin();
         this->past_dirs.at(i).insert(it, dir);
+        
+    		if(did_land2 && i%20 == 0){
+    			landed.at(i/20) = landed.at(i/20)+1;
+    		}
+
+    	  else if(!did_land2 && i%20 == 0){
+    			landed.at(i/20) = 0;
+    		}
+      }
+  	  else {
+    		if(did_land1 && i%20 == 0) {
+    			landed.at(i/20) = landed.at(i/20)+1;
+    		}
+  	  	else if(!did_land1 && i%20 == 0) {
+			     landed.at(i/20) = 0;
+  		  }
       }
 
   	}
@@ -136,6 +154,9 @@ public:
   }
 
   void add_bees(int num_bees){
+	landed.resize(num_bees/20);
+	std::fill(landed.begin(), landed.end(), 0);
+
     for(int i = 0; i < num_bees; i++){
       cv::Point p1 = cv::Point((int)(rand()%max_x), (int)(rand()%max_y));
       this->bees.push_back(p1);
@@ -158,6 +179,10 @@ public:
 
   vector<cv::Point> get_bees(){
     return this->bees;
+  }
+
+  vector<int> get_landed(){
+    return this->landed;
   }
 
   // Compute distance as the average of the last DIR_MEMORY directions
@@ -186,7 +211,7 @@ public:
     return  (int)cv::norm(p1-p2);
   }
 
-  float get_potential(cv::Point p){
+  float get_potential(cv::Point p, bool *did_land){
     float cur_potential = 0;
     int resistance_str = 2000;
     int attraction_str = 10000;
@@ -206,6 +231,9 @@ public:
 
     for(unsigned i = random_off_flower; i < flowers.size(); i+=flower_stride){
       int dist = distance(flowers.at(i), p);
+      if(dist < 2){
+		*did_land = true;
+	}
       if(dist != 0)
         cur_potential += (float)attraction_str*flower_stride/dist;
       else
