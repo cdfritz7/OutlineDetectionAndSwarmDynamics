@@ -12,289 +12,300 @@ float RandomFloat(float a, float b)
 	return a + r;
 }
 
-static std::vector<int> paired_idx;
+static vector<vector<Attractor>> attractorMatrix;
+static vector<vector<cv::Point>> attractorHistory;
+static vector<cv::Point> staticPoints;
 
-void static stableMarriage(std::vector<int> idx_array, std::vector<cv::Point> picks, std::vector<cv::Point> candidates) {
-	// No picks = no reason for stable marriage
-	if (picks.size() == 0) {
-		std::cout << "No picks" << std::endl;
-		return;
+static void UpdateAttractorMatrix(int start_idx, int end_idx, int avgPercent, int storedFrames) {
+	for (int P_idx = start_idx; P_idx < end_idx; P_idx++) {
+		// If the position they are at has no other point and there is an attractor there with a good enough score
+		int x = staticPoints[P_idx].x;
+		int y = staticPoints[P_idx].y;
+		int pointIdx = attractorMatrix[x][y].pointIdx;
+		int score = attractorMatrix[x][y].score;
+
+		if (pointIdx == -1 && score > (avgPercent * attractorHistory.size())) {
+			// Save the bee to that position, don't move the bee
+			attractorMatrix[x][y].pointIdx = P_idx;
+		}
 	}
+}
 
-	// Initialize 2D vector
-	std::vector<std::vector<int>> threadRepeats;
+static void movePoint(int start_idx, int end_idx, int randomFactor, int stepSize, int xWidth, int yWidth) {
+	for (int P_idx = start_idx; P_idx < end_idx; P_idx++) {
+		if (attractorMatrix[staticPoints[P_idx].x][staticPoints[P_idx].y].pointIdx != P_idx) {
+			float dist_x, dist_y;
 
-	for (int i = 0; i < (picks.size() + 1); i++) {
-		threadRepeats.push_back(std::vector<int>());
-	}
+			//move randomly
+			dist_x = RandomFloat(-PI, PI);
+			dist_y = RandomFloat(-PI, PI);
 
-	// repeats[pick] contains all the candidates who picked pick (localized to the thread)
-	for (int i = 0; i < idx_array.size(); i++) {
-		threadRepeats[paired_idx[idx_array[i]]].push_back(idx_array[i]);
-	}
+			float rads = atan2(dist_y, dist_x) + RandomFloat(-1 * randomFactor, randomFactor);
 
-	int pick = 0;
-	std::vector<int> competitors;
+			int new_x, new_y;
 
-	int competitor;
-	int competitor_mag;
-	int closest_comp;
-	int closest_mag = -1;
+			if (!(dist_x == 0 && dist_y == 0)) {
+				new_x = staticPoints[P_idx].x + int(cos(rads) * stepSize);
+				new_y = staticPoints[P_idx].y + int(sin(rads) * stepSize);
 
-	// for each group threadRepeats[pick] of size > 1
-	while (pick < picks.size()) {
-		competitors = threadRepeats[pick];
-
-		// find the candidate that is closest to the pick, increment the pick for all others
-		if (competitors.size() > 1) {
-			closest_mag = -1;
-			for (int i = (competitors.size() - 1); i >= 0; i--) {
-				competitor = competitors[i];
-
-				// remove candidate from competitors list
-				competitors.pop_back();
-
-				competitor_mag = pow(candidates[competitor].x - picks[pick].y, 2) + pow(candidates[competitor].x - picks[pick].y, 2);
-
-				// no closest candidate yet
-				if (closest_mag == -1) {
-					//std::cout << "competitors case 1" << std::endl;
-					closest_comp = competitor;
-					closest_mag = competitor_mag;
+				if (new_x < 0 || new_x > xWidth) {
+					staticPoints[P_idx].x = staticPoints[P_idx].x - int(cos(rads) * stepSize);
 				}
-				// new candidate is closer than old closest candidate
-				else if (competitor_mag < closest_mag) {
-					//std::cout << "competitors case 2" << std::endl;
-					threadRepeats[pick + 1].push_back(closest_comp);
-					paired_idx[closest_comp]++;
-
-					closest_comp = competitor;
-					closest_mag = competitor_mag;
-				}
-				// new candidate is not closer that closest candidate
 				else {
-					//std::cout << "competitors case 3" << std::endl;
-					threadRepeats[pick + 1].push_back(competitor);
-					paired_idx[competitor]++;
+					staticPoints[P_idx].x = new_x;
+				}
+
+				if (new_y < 0 || new_y > yWidth) {
+					staticPoints[P_idx].y = staticPoints[P_idx].y - int(sin(rads) * stepSize);
+				}
+				else {
+					staticPoints[P_idx].y = new_y;
 				}
 			}
-			// Add closest candidate back for that pick
-			threadRepeats[pick].push_back(closest_comp);
-		}
-		pick++;
-	}
-}
-
-void BeeHandle::movePoints() {
-	int num_landed = 0;
-	if (this->points.size() > this->attractors.size()) {
-		//points are candidates, flowers are picks
-		for (int i = 0; i < points.size(); i++) {
-			int flower = paired_idx[i];
-			if (flower < attractors.size()) {
-				num_landed += movePoint(i, flower);
-			}
-			else {
-				movePoint(i);
-			}
-		}
-		if (attractors.size() == 0 || ((double)num_landed / (double)attractors.size()) >= percent_landed) {
-			updateReady = true;
-			if (next_updated) {
-				attractors = next_attractors;
-				next_updated = false;
-			}
-		}
-	}
-	else {
-		//points are picks, flowers are candidates
-		for (int i = 0; i < attractors.size(); i++) {
-			int bee = paired_idx[i];
-			if (bee < points.size()) {
-				num_landed += movePoint(bee, i);
-			} else {
-				movePoint(bee);
-			}
-		}
-		if (points.size() == 0 ||((double)num_landed / (double)points.size()) >= percent_landed) {
-			updateReady = true;
-			if (next_updated) {
-				attractors = next_attractors;
-				next_updated = false;
-			}
 		}
 	}
 }
-int BeeHandle::movePoint(int P_idx, int A_idx) {
-	int dist_x, dist_y;
-	if (A_idx == -1) {
-		//move randomly
-		dist_x = RandomFloat(-2.0, 2.0);
-		dist_y = RandomFloat(-2.0, 2.0);
-	}
-	else {
-		dist_x = attractors[A_idx].x - points[P_idx].x;
-		dist_y = attractors[A_idx].y - points[P_idx].y;
-	}
 
-	if (A_idx != -1) {
-		int mag = pow(dist_x, 2) + pow(dist_y, 2);
-		if (mag <= pow(stepSize, 2)) {
-			//move bee to flower
-			points[P_idx].x = attractors[A_idx].x;
-			points[P_idx].y = attractors[A_idx].y;
-			return 1;
+static void removeLastFrame(int start_idx, int end_idx, double avgPercent) {
+	for (int i = start_idx; i < end_idx; i++) {
+		attractorMatrix[attractorHistory[0][i].x][attractorHistory[0][i].y].score = attractorMatrix[attractorHistory[0][i].x][attractorHistory[0][i].y].score - 1;
+		if (attractorMatrix[attractorHistory[0][i].x][attractorHistory[0][i].y].score < (avgPercent * attractorHistory.size())){
+			attractorMatrix[attractorHistory[0][i].x][attractorHistory[0][i].y].pointIdx = -1;
 		}
 	}
-
-	float rads = atan2(dist_y, dist_x) + RandomFloat(-1 * randomFactor, randomFactor);
-
-	int new_x, new_y;
-
-	if (!(dist_x == 0 && dist_y == 0)) {
-		new_x = points[P_idx].x + int(cos(rads) * stepSize);
-		new_y = points[P_idx].y + int(sin(rads) * stepSize);
-
-		if (new_x < 0 || new_x > xWidth) {
-			points[P_idx].x = points[P_idx].x - int(cos(rads) * stepSize);
-		}
-		else {
-			points[P_idx].x = new_x;
-		}
-
-		if (new_y < 0 || new_y > yWidth) {
-			points[P_idx].y = points[P_idx].y - int(sin(rads) * stepSize);
-		}
-		else {
-			points[P_idx].y = new_y;
-		}
-	}
-	return 0;
 }
 
-BeeHandle::BeeHandle(int xwidth, int ywidth, int stepsize, double randomfactor, int numthreads, double landing_percent) {
+BeeHandle::BeeHandle(int xwidth, int ywidth, int stepsize, double randomfactor, int numthreads, int stored_frames, double avg_percent) {
 	xWidth = xwidth;
 	yWidth = ywidth;
 	stepSize = stepsize;
 	randomFactor = randomfactor;
 	numThreads = numthreads;
-	paired_idx = std::vector<int>();
-	updateReady = true;
-	next_updated = false;
-	percent_landed = landing_percent;
-	next_attractors.clear();
+	avgPercent = avg_percent;
+	storedFrames = stored_frames;
+	attractorMatrix = vector<vector<Attractor>>(xWidth, vector<Attractor>(yWidth, Attractor(0, 0)));
+	for (int i = 0; i < attractorMatrix.size(); i++) {
+		for (int j = 0; j < attractorMatrix[0].size(); j++) {
+			attractorMatrix[i][j].x = i;
+			attractorMatrix[i][j].y = j;
+		}
+	}
+	attractorHistory.clear();
+	staticPoints.clear();
+}
+
+void BeeHandle::movePoints() {
+	for (int P_idx = 0; P_idx < points.size(); P_idx++) {
+		if (attractorMatrix[points[P_idx].x][points[P_idx].y].pointIdx != P_idx) {
+			float dist_x, dist_y;
+
+			//move randomly
+			dist_x = RandomFloat(-PI, PI);
+			dist_y = RandomFloat(-PI, PI);
+
+			float rads = atan2(dist_y, dist_x) + RandomFloat(-1 * randomFactor, randomFactor);
+
+			int new_x, new_y;
+
+			if (!(dist_x == 0 && dist_y == 0)) {
+				new_x = points[P_idx].x + int(cos(rads) * stepSize);
+				new_y = points[P_idx].y + int(sin(rads) * stepSize);
+
+				if (new_x < 0 || new_x >= xWidth) {
+					points[P_idx].x = points[P_idx].x - int(cos(rads) * stepSize);
+				}
+				else {
+					points[P_idx].x = new_x;
+				}
+
+				if (new_y < 0 || new_y >= yWidth) {
+					points[P_idx].y = points[P_idx].y - int(sin(rads) * stepSize);
+				}
+				else {
+					points[P_idx].y = new_y;
+				}
+			}
+		}
+	}
 }
 
 void BeeHandle::updatePoints() {
-	if (updateReady) {
-		updateReady = false;
-		std::vector<std::thread> threads;
-		std::vector<int> idx_array;
-		std::vector<std::vector<int>> repeats;
-		paired_idx.clear();
+	vector<thread> threads_update;
+	vector<thread> threads_move;
 
-		std::vector<cv::Point> picks;
-		std::vector<cv::Point> candidates;
+	int subSize = points.size() / this->numThreads;
+	int subRem = points.size() % this->numThreads;
 
-		if (this->points.size() > this->attractors.size()) {
-			candidates = this->points;
-			picks = this->attractors;
+	staticPoints = points;
+
+	Attractor a(0,0);
+
+	for(int x = 0; x < xWidth; x++){
+		for(int y = 0; y < yWidth; y++){
+			a = attractorMatrix[x][y];
 		}
-		else {
-			candidates = this->attractors;
-			picks = this->points;
-		}
-
-		// Set candidate to first pick in pick list
-		for (int i = 0; i < candidates.size(); i++) {
-			paired_idx.push_back(0);
-		}
-
-		do {
-			idx_array.clear();
-			repeats.clear();
-
-			// Initialize 2D vector
-			for (int i = 0; i < (picks.size() + 1); i++) {
-				repeats.push_back(std::vector<int>());
-			}
-
-			// repeats[pick] contains all the candidates who picked pick
-			for (int i = 0; i < (paired_idx.size()); i++) {
-				repeats[paired_idx[i]].push_back(i);
-			}
-
-			// idx_array is the combination of all candidates with repeat picks
-			for (int i = 0; i < (repeats.size() - 1); i++) {
-				if (repeats[i].size() > 1) {
-					idx_array.insert(idx_array.end(), repeats[i].begin(), repeats[i].end());
-				}
-			}
-
-			int subSize = idx_array.size() / this->numThreads;
-			int subRem = idx_array.size() % this->numThreads;
-
-			std::vector<int> subVec;
-
-			for (int i = 0; i < this->numThreads; i++) {
-				int start;
-				int end;
-				// If there are less than 3 candidates in a thread, there is no point of multithreading
-				if (idx_array.size() < (this->numThreads * 3)) {
-					if (i < 1) {
-						// Run stable marriage with everything
-						stableMarriage(idx_array, picks, candidates);
-					}
-				}
-				// Assign a subvector of idx_array to a thread
-				else if (i < subRem) {
-					//if (i < 1) std::cout << "case 2" << std::endl;
-					start = i * (subSize + 1);
-					end = (i + 1) * (subSize + 1);
-
-					// Create a thread
-					threads.push_back(std::thread(stableMarriage, std::vector<int>(idx_array.cbegin() + start, idx_array.cbegin() + end), picks, candidates));
-				}
-				// Assign a subvector of idx_array to a thread
-				else {
-					//if (i < 1) std::cout << "case 3" << std::endl;
-					start = subRem * (subSize + 1) + (i - subRem) * (subSize);
-					end = subRem * (subSize + 1) + (i - subRem + 1) * (subSize);
-
-					// Create a thread
-					threads.push_back(std::thread(stableMarriage, std::vector<int>(idx_array.cbegin() + start, idx_array.cbegin() + end), picks, candidates));
-				}
-			}
-
-			for (int j = 0; j < threads.size(); j++) {
-				threads[j].join();
-			}
-
-			threads.clear();
-		} while (idx_array.size() > 0);
 	}
+
+	for (int i = 0; i < this->numThreads; i++) {
+		int start;
+		int end;
+		// If there are less than 3 candidates in a thread, there is no point of multithreading
+		if (points.size() < numThreads) {
+			if (i < points.size()) {
+				start = i;
+				end = i + 1;
+				//UpdateAttractorMatrix(points, start, end, avgPercent, storedFrames);
+				threads_update.push_back(thread(UpdateAttractorMatrix, start, end, avgPercent, storedFrames));
+			}
+		}
+		// Assign a subvector of idx_array to a thread
+		else if (i < subRem) {
+			//if (i < 1) std::cout << "case 2" << std::endl;
+			start = i * (subSize + 1);
+			end = (i + 1) * (subSize + 1);
+			//UpdateAttractorMatrix(points, start, end, avgPercent, storedFrames);
+			threads_update.push_back(thread(UpdateAttractorMatrix, start, end, avgPercent, storedFrames));
+		}
+		// Assign a subvector of idx_array to a thread
+		else {
+			//if (i < 1) std::cout << "case 3" << std::endl;
+			start = subRem * (subSize + 1) + (i - subRem) * (subSize);
+			end = subRem * (subSize + 1) + (i - subRem + 1) * (subSize);
+			//UpdateAttractorMatrix(points, start, end, avgPercent, storedFrames);
+			threads_update.push_back(thread(UpdateAttractorMatrix, start, end, avgPercent, storedFrames));
+		}
+	}
+
+	for (int j = 0; j < threads_update.size(); j++) {
+		threads_update[j].join();
+	}
+
+	threads_update.clear();
+
+	/*
+	for (int i = 0; i < this->numThreads; i++) {
+		int start;
+		int end;
+		// If there are less than 3 candidates in a thread, there is no point of multithreading
+		if (points.size() < numThreads) {
+			if (i < points.size()) {
+				start = i;
+				end = i + 1;
+				//UpdateAttractorMatrix(points, start, end, avgPercent, storedFrames);
+				threads_move.push_back(thread(movePoint, start, end, randomFactor, stepSize, xWidth, yWidth));
+			}
+		}
+		// Assign a subvector of idx_array to a thread
+		else if (i < subRem) {
+			//if (i < 1) std::cout << "case 2" << std::endl;
+			start = i * (subSize + 1);
+			end = (i + 1) * (subSize + 1);
+			//UpdateAttractorMatrix(points, start, end, avgPercent, storedFrames);
+			threads_move.push_back(thread(movePoint, start, end, randomFactor, stepSize, xWidth, yWidth));
+		}
+		// Assign a subvector of idx_array to a thread
+		else {
+			//if (i < 1) std::cout << "case 3" << std::endl;
+			start = subRem * (subSize + 1) + (i - subRem) * (subSize);
+			end = subRem * (subSize + 1) + (i - subRem + 1) * (subSize);
+			//UpdateAttractorMatrix(points, start, end, avgPercent, storedFrames);
+			threads_move.push_back(thread(movePoint, start, end, randomFactor, stepSize, xWidth, yWidth));
+		}
+	}
+
+
+	for (int j = 0; j < threads_move.size(); j++) {
+		threads_move[j].join();
+	}
+
+	threads_move.clear();
+	*/
+
+	points = staticPoints;
 
 	movePoints();
 }
 
-std::vector<int> BeeHandle::getPairedIdx() {
-	return paired_idx;
+vector<int> BeeHandle::get_dirs(){
+	vector<int> dirs;
+	for(int i = 0; i < points.size(); i++){
+		dirs.push_back(0);
+	}
+	return dirs;
 }
 
-void BeeHandle::safeReplaceAttractors(std::vector<cv::Point> new_attractors) {
-	if (updateReady) {
-		attractors = new_attractors;
-	}
-	else {
-		next_attractors = new_attractors;
-		next_updated = true;
-	}
-}
+void BeeHandle::addAttractorsAvg(vector<cv::Point> new_attractors) {
 
-std::vector<int> BeeHandle::get_dirs() {
-	std::vector<int> dir_vec;
-	for (int i = 0; i < points.size(); i++){
-		dir_vec.push_back(0);
+	vector<vector<int>> temp(xWidth, vector<int> (yWidth, 0));
+
+	// Remove duplicates
+	// Cannot be done in parallel - O(f)
+	for (int i = new_attractors.size()-1; i >= 0; i--) {
+		// If a contour in that position already exists, remove
+		if (temp[new_attractors[i].x][new_attractors[i].y] == 1) {
+			new_attractors.erase(new_attractors.begin() + i);
+		}
+		// If a contour in that position doesn't exist, increment attractorMatrix in that position and add reference to the position to attractorRefs
+		else {
+			temp[new_attractors[i].x][new_attractors[i].y] = 1;
+			attractorMatrix[new_attractors[i].x][new_attractors[i].y].score = attractorMatrix[new_attractors[i].x][new_attractors[i].y].score + 1;
+		}
 	}
-	return dir_vec;
+
+	//Now that dups are removed, add to history
+	attractorHistory.push_back(new_attractors);
+
+	// Remove expired frame
+	// Can be done in parallel (no duplicates) - O(f/t)
+	/*
+	if (attractorHistory.size() > storedFrames){
+		for (int i = 0; i < attractorHistory[0].size(); i++) {
+			attractorMatrix[attractorHistory[0][i].x][attractorHistory[0][i].y].score = attractorMatrix[attractorHistory[0][i].x][attractorHistory[0][i].y].score - 1;
+		}
+		attractorHistory.erase(attractorHistory.begin());
+	}*/
+
+
+	if (attractorHistory.size() > storedFrames) {
+		vector<thread> threads;
+		int subSize = attractorHistory[0].size() / this->numThreads;
+		int subRem = attractorHistory[0].size() % this->numThreads;
+
+		for (int i = 0; i < this->numThreads; i++) {
+			int start;
+			int end;
+			// If there are less than 3 candidates in a thread, there is no point of multithreading
+			if (attractorHistory[0].size() < numThreads) {
+				if (i < attractorHistory[0].size()) {
+					start = i;
+					end = i + 1;
+					//UpdateAttractorMatrix(points, start, end, avgPercent, storedFrames);
+					threads.push_back(thread(removeLastFrame, start, end, avgPercent));
+				}
+			}
+			// Assign a subvector of idx_array to a thread
+			else if (i < subRem) {
+				//if (i < 1) std::cout << "case 2" << std::endl;
+				start = i * (subSize + 1);
+				end = (i + 1) * (subSize + 1);
+				//UpdateAttractorMatrix(points, start, end, avgPercent, storedFrames);
+				threads.push_back(thread(removeLastFrame, start, end, avgPercent));
+			}
+			// Assign a subvector of idx_array to a thread
+			else {
+				//if (i < 1) std::cout << "case 3" << std::endl;
+				start = subRem * (subSize + 1) + (i - subRem) * (subSize);
+				end = subRem * (subSize + 1) + (i - subRem + 1) * (subSize);
+				//UpdateAttractorMatrix(points, start, end, avgPercent, storedFrames);
+				threads.push_back(thread(removeLastFrame, start, end, avgPercent));
+			}
+		}
+
+		for (int j = 0; j < threads.size(); j++) {
+			threads[j].join();
+		}
+
+		threads.clear();
+		attractorHistory.erase(attractorHistory.begin());
+	}
 }

@@ -2,23 +2,35 @@
 #include "SwarmStrategy.h"
 #include <vector>
 #include <opencv2/core/types.hpp>
+#include <time.h>
+#include <stdlib.h>
 
 #define PI			3.14159265358979323846
 
+class Attractor {
+public:
+	int pointIdx;
+	int score;
+	int x;
+	int y;
+	Attractor(int xcoord, int ycoord) {
+		score = 0;
+		x = xcoord;
+		y = ycoord;
+		pointIdx = -1;
+	}
+};
+
 class BeeHandle : public SwarmStrategy {
 private:
-	bool updateReady;
-	bool next_updated;
-	double percent_landed;
 	double randomFactor;
 	int numThreads;
+	int storedFrames;
+	double avgPercent;
 	void movePoints();
-	int movePoint(int P_idx, int A_idx = -1);
-	std::vector<cv::Point> next_attractors;
 public:
-	BeeHandle(int xwidth = 400, int ywidth = 400, int stepsize = 10, double randomfactor = PI/4, int numthreads = 4, double landing_percent = 0.0);
+	BeeHandle(int xwidth = 400, int ywidth = 400, int stepsize = 10, double randomfactor = PI / 4, int numthreads = 4, int stored_frames = 3, double avg_percent = 0.5);
 	void updatePoints();
-	std::vector<int> getPairedIdx();
-	void safeReplaceAttractors(std::vector<cv::Point> new_attractors);
+	void addAttractorsAvg(std::vector<cv::Point> new_attractors);
 	std::vector<int> get_dirs();
 };

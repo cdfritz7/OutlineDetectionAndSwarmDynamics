@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
 	int depth_threshold = 1500; //threshold depth in mm
   int scale = 2; //scale for graphics window
   int bee_size = 2; //size of each bee
-	int num_bees = 1600; //number of bees
+	int num_bees = 2400; //number of bees
   int bee_total = 0; //time spent on bee module
 	bool time_it = false; //whether we use timing or not
 
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
   }
 
 	//create bee handler for calculating bee dynamics
-	BeeHandle bee_handle = BeeHandle(down_width, down_height, 5, 0, 4, 0.75);
+	BeeHandle bee_handle = BeeHandle(down_width, down_height, 5, 0.8, 4, 1, 0.9);
 	//bee_handle.add_bees(num_bees);
   for (int i = 0; i < num_bees; i++){
     bee_handle.addP();
@@ -210,7 +210,7 @@ int main(int argc, char **argv) {
 
 		//flatten contours and add as "flowers" to bee_handle
 		//bee_handle.add_flowers(flat_contours);
-    bee_handle.safeReplaceAttractors(flat_contours);
+    bee_handle.addAttractorsAvg(flat_contours);
 		bee_handle.updatePoints();
 
 		//get bee positions
@@ -218,6 +218,10 @@ int main(int argc, char **argv) {
 		//bee_positions = bee_handle.get_bees();
     bee_positions = bee_handle.getPoints();
     //bee_positions = flat_contours;
+    //std::vector<Point> combined(flat_contours);
+    //std::vector<Point> bh_points = bee_handle.getPoints();
+    //combined.insert(combined.end(), bh_points.begin(), bh_points.end());
+    //bee_positions = combined;
     bee_dir = bee_handle.get_dirs();
 
 		//update our graphics module
