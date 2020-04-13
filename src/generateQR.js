@@ -1,7 +1,6 @@
 //qr code stuff
 var http = require('http');
 var fs = require('fs');
-const thisqrcode = require('./qrcode.js');
 
 const uploadURI = 'POST https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
 var metadataURI = 'POST https://www.googleapis.com/drive/v3/files'; //
@@ -47,12 +46,10 @@ function buildQRcode(filename){
   var url = goog_url_beg + filename + goog_url_end;
 
   console.log(url);
-  var typeNumber = 0;
-  var errorCorrectionLevel = 'H';
-  var qr = thisqrcode(typeNumber, errorCorrectionLevel);
-  qr.addData(url);
-  qr.make();
-  console.log("qr code made~");
+  fs.writeFile('graphics/url.txt', url, (err) => {
+    // In case of a error throw err.
+    if (err) throw err;
+})
 }
 
 

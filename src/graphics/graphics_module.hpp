@@ -102,6 +102,7 @@ public:
   void update_display();
   void cleanup();
   bool should_close();
+	void generate();
 };
 
 #endif
