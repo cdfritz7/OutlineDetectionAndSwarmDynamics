@@ -20,6 +20,6 @@
     "electron": "^7.1.9"
   },
   "dependencies": {
-    "googleapis": "^27.0.0"
+    "googleapis": "^30.0.0"
   }
 }
