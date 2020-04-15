@@ -3,11 +3,12 @@
 #include <vector>
 #include <cmath>
 #include <pthread.h>
-#include <opencv.hpp>
+#include <opencv2/opencv.hpp>
 #include <fstream>
 #include <chrono>
 #include "BeeHandle.cpp"
 #include "MyFreenectDevice.hpp"
+#include "AudioHandler.hpp"
 #include "./graphics/graphics_module.hpp"
 
 using namespace cv;
@@ -71,18 +72,21 @@ int main(int argc, char **argv) {
 	int down_height = 240;
 	int contour_drop = 1; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
-  int scale = 2; //scale for graphics window
+  int scale = 3; //scale for graphics window
   int bee_size = 2; //size of each bee
-	int num_bees = 2400; //number of bees
+	int num_bees = 1600; //number of bees
   int bee_total = 0; //time spent on bee module
 	bool time_it = false; //whether we use timing or not
 
-  //set variables for timing
+  	//set variables for timing
 	chrono::time_point<std::chrono::high_resolution_clock> time_start;
 	chrono::time_point<std::chrono::high_resolution_clock> time_stop;
 	chrono::time_point<std::chrono::high_resolution_clock> bee_start;
 	chrono::time_point<std::chrono::high_resolution_clock> bee_stop;
 	int iterations = 0;
+
+  int contour_count = 0;
+  vector<Point> set_contour;
 
 	//argument parsing
 	if(argc > 2){
@@ -108,11 +112,18 @@ int main(int argc, char **argv) {
   }
 
 	//create bee handler for calculating bee dynamics
-	BeeHandle bee_handle = BeeHandle(down_width, down_height, 5, 0.8, 4, 1, 0.9);
+
+	BeeHandle bee_handle = BeeHandle(down_width, down_height, 5, 0.8, 4, 7, (double) 1/7);
 	//bee_handle.add_bees(num_bees);
   for (int i = 0; i < num_bees; i++){
     bee_handle.addP();
   }
+
+	//BeeHandle bee_handle = BeeHandle(down_width, down_height);
+	//bee_handle.add_bees(num_bees);
+	int num_sound_bees = num_bees/20;
+
+	//AudioHandler audio = AudioHandler((int)num_sound_bees);
 
 	//seed our random number generator
 	RNG rng(1235);
@@ -136,6 +147,8 @@ int main(int argc, char **argv) {
 	vector<Vec4i> hierarchy;
 	vector<Point> bee_positions;
 	vector<Point> bee_attractors;
+	vector<int> landed;
+	//vector<bool> bee_trigger;
 
 	//create our connection to the connect
 	Freenect::Freenect freenect;
@@ -162,6 +175,8 @@ int main(int argc, char **argv) {
   // 0 - 7 starting north going clockwise
 	vector<int> bee_dir (num_bees);
 
+  cv::namedWindow("RGB IN", cv::WINDOW_AUTOSIZE);
+  //cv::waitKey(0);
 	//main loop
   do {
 
@@ -173,9 +188,13 @@ int main(int argc, char **argv) {
 		device.getVideo(rgbIn);
 		device.getDepth(depthIn);
 
+
 		//resize input image and depth for decreased computation
 		cv::resize(rgbIn, rgb_down, Size(down_width, down_height));
 		cv::resize(depthIn, depth_down, Size(down_width, down_height));
+
+		cv::imshow("RGB IN", rgbIn);
+		cv::waitKey(1);
 
 		//normalize depth to 0-255 range and filter every depth past our threshold
 		depth_down.convertTo(depthf, CV_8UC3, 255.0/10000.0); //kinect caps out at 10000 mm
@@ -208,8 +227,26 @@ int main(int argc, char **argv) {
 			bee_start = chrono::high_resolution_clock::now();
 		}
 
+    //if(1000 > contour_count){
+      //printf("%d\n", contour_count);
+    //  contour_count++;
+    //  bee_handle.addAttractorsAvg(flat_contours);
+    //} else if (contour_count == 1000){
+    //  printf("%d\n", contour_count);
+    //  contour_count++;
+    //  set_contour = flat_contours;
+    //  bee_handle.addAttractorsAvg(set_contour);
+    //} else if (contour_count > 2000){
+    //  bee_handle.addAttractorsAvg(flat_contours);
+    //} else {
+    //  //printf("%d\n", contour_count);
+    //  contour_count++;
+    //  bee_handle.addAttractorsAvg(set_contour);
+    //}
+
 		//flatten contours and add as "flowers" to bee_handle
 		//bee_handle.add_flowers(flat_contours);
+
     bee_handle.addAttractorsAvg(flat_contours);
 		bee_handle.updatePoints();
 
@@ -234,6 +271,13 @@ int main(int argc, char **argv) {
 		gm.update_particles(bee_x, bee_y, bee_stage, bee_dir);
 		gm.update_display();
 
+		//landed = bee_handle.get_landed();
+		//for(int i = 0; i < landed.size(); i++){
+		//	if(landed.at(i) == 1){
+		//		audio.play_sound(i);
+		//	}
+		//}
+
 		//end timer for bees if timing is enabled
 		if(time_it){
 			bee_stop = chrono::high_resolution_clock::now();
@@ -256,6 +300,7 @@ int main(int argc, char **argv) {
 	}
 
 	//clean up everything we have
+	//audio.delete_sources();
 	device.stopVideo();
 	device.stopDepth();
 	finalFrame.release();

@@ -12,6 +12,26 @@ float RandomFloat(float a, float b)
 	return a + r;
 }
 
+int rads2Dir(float rads){
+	if ((3 * PI/8) > rads && rads >= (PI/8)) {
+		return 1;
+	} else if ((PI/8) > rads && rads >= (-1 * PI/8)) {
+		return 2;
+	} else if ((-1 * PI/8) > rads && rads >= (-3 * PI/8)) {
+		return 3;
+	} else if ((-3 * PI/8) > rads && rads >= (-5 * PI/8)) {
+		return 4;
+	} else if ((-5 * PI/8) > rads && rads >= (-7 * PI/8)) {
+		return 5;
+	} else if ((-7 * PI/8) > rads || rads >= (7 * PI/8)) {
+		return 6;
+	} else if ((7 * PI/8) > rads && rads >= (5 * PI/8)) {
+		return 7;
+	} else {
+		return 0;
+	}
+}
+
 static vector<vector<Attractor>> attractorMatrix;
 static vector<vector<cv::Point>> attractorHistory;
 static vector<cv::Point> staticPoints;
@@ -92,11 +112,41 @@ BeeHandle::BeeHandle(int xwidth, int ywidth, int stepsize, double randomfactor, 
 	}
 	attractorHistory.clear();
 	staticPoints.clear();
+	dirs.clear();
+	landed.clear();
+	sudo_landed.clear();
 }
 
 void BeeHandle::movePoints() {
+	if(points.size() > dirs.size()){
+		for(int i = dirs.size(); i < points.size(); i++){
+			dirs.push_back(0);
+		}
+	}
+	if(points.size()/20 > landed.size()){
+		for(int i = landed.size(); i < points.size()/20; i++){
+			landed.push_back(0);
+			sudo_landed.push_back(0);
+		}
+	}
 	for (int P_idx = 0; P_idx < points.size(); P_idx++) {
-		if (attractorMatrix[points[P_idx].x][points[P_idx].y].pointIdx != P_idx) {
+		if (attractorMatrix[points[P_idx].x][points[P_idx].y].pointIdx == P_idx){
+			if(P_idx < points.size()/20){
+				if(sudo_landed[P_idx] == 0){
+					landed[P_idx] = 1;
+					sudo_landed[P_idx] = 1;
+				} else if (sudo_landed[P_idx] == 1){
+					landed[P_idx] = 0;
+					sudo_landed[P_idx] = 2;
+				}
+			}
+		}
+		else {
+			if(P_idx < points.size()/20){
+				landed[P_idx] = 0;
+				sudo_landed[P_idx] = 0;
+			}
+
 			float dist_x, dist_y;
 
 			//move randomly
@@ -106,6 +156,8 @@ void BeeHandle::movePoints() {
 			float rads = atan2(dist_y, dist_x) + RandomFloat(-1 * randomFactor, randomFactor);
 
 			int new_x, new_y;
+			float x_change = 0.0;
+			float y_change = 1.0;
 
 			if (!(dist_x == 0 && dist_y == 0)) {
 				new_x = points[P_idx].x + int(cos(rads) * stepSize);
@@ -113,17 +165,22 @@ void BeeHandle::movePoints() {
 
 				if (new_x < 0 || new_x >= xWidth) {
 					points[P_idx].x = points[P_idx].x - int(cos(rads) * stepSize);
+					x_change = -1 * cos(rads);
 				}
 				else {
 					points[P_idx].x = new_x;
+					x_change = cos(rads);
 				}
 
 				if (new_y < 0 || new_y >= yWidth) {
 					points[P_idx].y = points[P_idx].y - int(sin(rads) * stepSize);
+					y_change = -1 * sin(rads);
 				}
 				else {
 					points[P_idx].y = new_y;
+					y_change = sin(rads);
 				}
+				dirs[P_idx] = rads2Dir(atan2(y_change, x_change));
 			}
 		}
 	}
@@ -227,11 +284,11 @@ void BeeHandle::updatePoints() {
 }
 
 vector<int> BeeHandle::get_dirs(){
-	vector<int> dirs;
-	for(int i = 0; i < points.size(); i++){
-		dirs.push_back(0);
-	}
 	return dirs;
+}
+
+vector<int> BeeHandle::get_landed(){
+	return landed;
 }
 
 void BeeHandle::addAttractorsAvg(vector<cv::Point> new_attractors) {
