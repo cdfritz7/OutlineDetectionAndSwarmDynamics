@@ -72,10 +72,10 @@ int main(int argc, char **argv) {
 	int down_height = 240;
 	int contour_drop = 1; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
-  
+
   int scale = 2;//8; //scale for graphics window
   int bee_size = 2; //size of each bee
-	
+
   int num_bees = 800; //number of bees
  	int bee_total = 0; //time spent on bee module
 	bool time_it = false; //whether we use timing or not
@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
 	int iterations = 0;
 
 	//argument parsing
-	if(argc > 2){
+	if(argc > 1){
 		for(int i = 0; i < argc; i++){
 			if(String(argv[i]).compare("-bees")==0 && argc>(i+1) && isInteger(argv[i+1])){
 				num_bees = stoi(String(argv[i+1]));
@@ -114,9 +114,9 @@ int main(int argc, char **argv) {
 	BeeHandle bee_handle = BeeHandle(down_width, down_height);
 	bee_handle.add_bees(num_bees);
 	int num_sound_bees = num_bees/20;
-	
+
 	AudioHandler audio = AudioHandler((int)num_sound_bees);
-	
+
 	//seed our random number generator
 	RNG rng(1235);
 
@@ -236,7 +236,7 @@ int main(int argc, char **argv) {
 		}
 		gm.update_particles(bee_x, bee_y, bee_stage, bee_dir);
 		gm.update_display();
-		
+
 		landed = bee_handle.get_landed();
 		for(int i = 0; i < landed.size(); i++){
 			if(landed.at(i) == 1){
