@@ -23,6 +23,7 @@ private:
   vector<vector<int>> past_dirs;
   vector<int> dirs;
   vector<int> landed;
+  int sound_divisor;
 
   void join_threads() {
   	for(int i=0; i<NUM_THREADS; i++) {
@@ -98,28 +99,28 @@ private:
       float newPotential = get_potential(new_pos,&did_land2);
       if(newPotential > currPotential){
         bees.at(i) = new_pos;
-        
+
         int dir = x_y_to_dir(move_x, move_y);
         // erase oldest direction
         this->past_dirs.at(i).pop_back();
         // insert new direction
         auto it = this->past_dirs.at(i).begin();
         this->past_dirs.at(i).insert(it, dir);
-        
-    		if(did_land2 && i%20 == 0){
-    			landed.at(i/20) = landed.at(i/20)+1;
+
+    		if(did_land2 && i%sound_divisor == 0){
+    			landed.at(i/sound_divisor) = landed.at(i/sound_divisor)+1;
     		}
 
-    	  else if(!did_land2 && i%20 == 0){
-    			landed.at(i/20) = 0;
+    	  else if(!did_land2 && i%sound_divisor == 0){
+    			landed.at(i/sound_divisor) = 0;
     		}
       }
   	  else {
-    		if(did_land1 && i%20 == 0) {
-    			landed.at(i/20) = landed.at(i/20)+1;
+    		if(did_land1 && i%sound_divisor == 0) {
+    			landed.at(i/sound_divisor) = landed.at(i/sound_divisor)+1;
     		}
-  	  	else if(!did_land1 && i%20 == 0) {
-			     landed.at(i/20) = 0;
+  	  	else if(!did_land1 && i%sound_divisor == 0) {
+			     landed.at(i/sound_divisor) = 0;
   		  }
       }
 
@@ -132,9 +133,10 @@ public:
 
   }
 
-  BeeHandle(int maxX, int maxY){
+  BeeHandle(int maxX, int maxY, int sound_div){
     max_x = maxX;
     max_y = maxY;
+    sound_divisor = sound_div;
   }
 
   void add_bees(vector<cv::Point> locations){
@@ -154,7 +156,7 @@ public:
   }
 
   void add_bees(int num_bees){
-	landed.resize(num_bees/20);
+	landed.resize(num_bees/sound_divisor);
 	std::fill(landed.begin(), landed.end(), 0);
 
     for(int i = 0; i < num_bees; i++){
@@ -215,7 +217,7 @@ public:
     float cur_potential = 0;
     int resistance_str = 2000;
     int attraction_str = 10000;
-    int bee_stride = 10; 
+    int bee_stride = 10;
     int flower_stride = 1;
     int random_off_bee = rand()%bee_stride;
     int random_off_flower = rand()%flower_stride;
@@ -231,9 +233,11 @@ public:
 
     for(unsigned i = random_off_flower; i < flowers.size(); i+=flower_stride){
       int dist = distance(flowers.at(i), p);
-      if(dist < 2){
-		*did_land = true;
-	}
+
+      if(dist == 0){
+		      *did_land = true;
+	    }
+
       if(dist != 0)
         cur_potential += (float)attraction_str*flower_stride/dist;
       else
