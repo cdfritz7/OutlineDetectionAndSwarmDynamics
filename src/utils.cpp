@@ -435,7 +435,7 @@ void drawBoundingBoxOnImage(unique_ptr<tensorflow::Session> &session2, Mat &imag
     // string of input layer and output layer
     string input_layer = "firstConv2D_input";
     string output_layer = "k2tfout_0";
-    string gesture_labels = "../pbfiles/gesture_map.txt";
+    string gesture_labels = "../gesture_map.txt";
 
     std::vector<Tensor> outputs;
     Status run_status = session2->Run({{input_layer, resized_tensor}},

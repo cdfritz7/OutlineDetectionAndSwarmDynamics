@@ -1,39 +1,18 @@
 #include "libfreenect.hpp"
 #include <iostream>
-#include <utility>
 #include <vector>
 #include <cmath>
 #include <pthread.h>
-#include <opencv2/opencv.hpp>
+#include <opencv.hpp>
 #include <fstream>
 #include <chrono>
-#include "BeeHandle_simple.hpp"
+#include "BeeHandleSimple.hpp"
 #include "MyFreenectDevice.hpp"
 #include "AudioHandler.hpp"
 #include "./graphics/graphics_module.hpp"
-#include "utils.h"
-
-#include "tensorflow/cc/ops/const_op.h"
-#include "tensorflow/cc/ops/image_ops.h"
-#include "tensorflow/cc/ops/standard_ops.h"
-#include "tensorflow/core/framework/graph.pb.h"
-#include "tensorflow/core/graph/default_device.h"
-#include "tensorflow/core/graph/graph_def_builder.h"
-#include "tensorflow/core/lib/core/threadpool.h"
-#include "tensorflow/core/lib/io/path.h"
-#include "tensorflow/core/lib/strings/stringprintf.h"
-#include "tensorflow/core/platform/init_main.h"
-#include "tensorflow/core/public/session.h"
-#include "tensorflow/core/util/command_line_flags.h"
 
 using namespace cv;
 using namespace std;
-
-using tensorflow::Flag;
-using tensorflow::Tensor;
-using tensorflow::Status;
-using tensorflow::string;
-using tensorflow::int32;
 
 //convert all values in mat > threshold to 0
 void filter(cv::Mat mat, int threshold){
@@ -94,14 +73,14 @@ int main(int argc, char **argv) {
 	int contour_drop = 1; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
   
-     	int scale = 2;//8; //scale for graphics window
-  	int bee_size = 2; //size of each bee
+  int scale = 2;//8; //scale for graphics window
+  int bee_size = 2; //size of each bee
 	
-   	int num_bees = 800; //number of bees
+  int num_bees = 800; //number of bees
  	int bee_total = 0; //time spent on bee module
 	bool time_it = false; //whether we use timing or not
 
-  	//set variables for timing
+  //set variables for timing
 	chrono::time_point<std::chrono::high_resolution_clock> time_start;
 	chrono::time_point<std::chrono::high_resolution_clock> time_stop;
 	chrono::time_point<std::chrono::high_resolution_clock> bee_start;
@@ -154,53 +133,6 @@ int main(int argc, char **argv) {
 	Mat outMat = Mat::zeros(Size(width, height),CV_8UC1);
 	Mat finalFrame = Mat::zeros(Size(down_width, down_height), CV_8UC1);
 
-        //path variables 
-        string rootdir = "../pbfiles/";
-    	string hand_labels = "labels_map.pbtxt";
-	string hand_graph = "frozen_inference_graph.pb";
-	string gesture_graph = "output_graph.pb";
-	string inputLayer = "image_tensor:0";
-	vector<string> outputLayer = {"detection_boxes:0", "detection_scores:0", "detection_classes:0", "num_detections:0"};
-
-	//load and initialize the hand model
-	std::unique_ptr<tensorflow::Session> session;
-	string graph_path = tensorflow::io::JoinPath(rootdir, hand_graph);
-	LOG(INFO) << "handgraphPath:" << graph_path;
-	Status load_graph_status = loadGraph(graph_path, &session);
-	if (!load_graph_status.ok()) {
-	    LOG(ERROR) << "loadGraph(): ERROR" << load_graph_status;
-	    return -1;
-	}
-
-	//load hand labels
-	std::map<int, std::string> labels_map = std::map<int,std::string>();
-	Status readLabelsMapStatus = readLabelsMapFile(tensorflow::io::JoinPath(rootdir, hand_labels), labels_map);
-	if (!readLabelsMapStatus.ok()) {
-	    LOG(ERROR) << "readLabelsMapFile(): ERROR" << readLabelsMapStatus;
-	    return -1;
-	}
-
-	//load and initialize the gesture model
-	std::unique_ptr<tensorflow::Session> session2;
-	string graph_path2 = tensorflow::io::JoinPath(rootdir, gesture_graph);
-	LOG(INFO) << "handgraphPath:" << graph_path2;
-	Status load_graph_status2 = loadGraph(graph_path2, &session2);
-	if (!load_graph_status2.ok()) {
-	    LOG(ERROR) << "loadGraph(): ERROR" << load_graph_status2;
-	    return -1;
-	} 
-
-	//tensor shape
-	Tensor tensor;
-    	vector<Tensor> outputs;
-	double thresholdScore = 0.5;
-    	double thresholdIOU = 0.8;
-	tensorflow::TensorShape shape = tensorflow::TensorShape();
-    	shape.AddDim(1);
-    	shape.AddDim(down_height);
-    	shape.AddDim(down_width);
-    	shape.AddDim(3);
-
 	//create all the vectors that we'll need
 	vector<vector<Point>> contours;
 	vector<Point> flat_contours;
@@ -248,48 +180,12 @@ int main(int argc, char **argv) {
 		device.getVideo(rgbIn);
 		device.getDepth(depthIn);
 
-
-		cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
-
-        	// Convert mat to tensor
-        	tensor = Tensor(tensorflow::DT_FLOAT, shape);
-        	Status readTensorStatus = readTensorFromMat(rgb_down, tensor);
-        	if (!readTensorStatus.ok()) {
-         	   LOG(ERROR) << "Mat->Tensor conversion failed: " << readTensorStatus;
-   	         return -1;
-        	}
-
- 	      	// Run the graph on tensor
- 	       	outputs.clear();
- 	       	Status runStatus = session->Run({{inputLayer, tensor}}, outputLayer, {}, &outputs);
- 	       	if (!runStatus.ok()) {
- 	           LOG(ERROR) << "Running model failed: " << runStatus;
- 	           return -1;
-   	     	}
-
-    	    	// Extract results from the outputs vector
-        	tensorflow::TTypes<float>::Flat scores = outputs[1].flat<float>();
-        	tensorflow::TTypes<float>::Flat classes = outputs[2].flat<float>();
-        	//tensorflow::TTypes<float>::Flat numDetections = outputs[3].flat<float>();
-        	tensorflow::TTypes<float, 3>::Tensor boxes = outputs[0].flat_outer_dims<float,3>();
-
-		vector<size_t> goodIdxs = filterBoxes(scores, boxes, thresholdIOU, thresholdScore);
-
-        	// Draw boxes and captions
-        	cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
- 		LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
-		LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
-        	drawBoundingBoxesOnImage(session2, rgb_down, scores, classes, boxes, labels_map, goodIdxs);
-
-		imshow("rgb", rgb_down);
-
-
 		//resize input image and depth for decreased computation
 		cv::resize(rgbIn, rgb_down, Size(down_width, down_height));
 		cv::resize(depthIn, depth_down, Size(down_width, down_height));
 
-    		cv::imshow("RGB IN", rgbIn);
-    		cv::waitKey(1);
+    cv::imshow("RGB IN", rgbIn);
+    cv::waitKey(1);
 
 		//normalize depth to 0-255 range and filter every depth past our threshold
 		depth_down.convertTo(depthf, CV_8UC3, 255.0/10000.0); //kinect caps out at 10000 mm
