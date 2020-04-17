@@ -72,9 +72,9 @@ int main(int argc, char **argv) {
 	int down_height = 240;
 	int contour_drop = 1; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
-  int scale = 3; //scale for graphics window
+  int scale = 2; //scale for graphics window
   int bee_size = 2; //size of each bee
-	int num_bees = 1600; //number of bees
+	int num_bees = 1200; //number of bees
   int bee_total = 0; //time spent on bee module
 	bool time_it = false; //whether we use timing or not
 
@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
 
 	//create bee handler for calculating bee dynamics
 
-	BeeHandle bee_handle = BeeHandle(down_width, down_height, 5, 0.8, 4, 7, (double) 1/7);
+	BeeHandle bee_handle = BeeHandle(down_width, down_height, 5, 0.8, 4, 15, (double) 1/5);
 	//bee_handle.add_bees(num_bees);
   for (int i = 0; i < num_bees; i++){
     bee_handle.addP();
