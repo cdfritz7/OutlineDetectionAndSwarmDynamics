@@ -3,3 +3,4 @@ token.json
 test.mp4
 main
 ./graphics/*.o
+token.pickle
