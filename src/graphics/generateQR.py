@@ -1,5 +1,6 @@
 from __future__ import print_function
 import datetime
+import os
 import pickle
 import qrcode
 import os.path
@@ -8,6 +9,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from apiclient.http import MediaFileUpload
 
+cwd = os.getcwd()
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 uploadURI = 'POST https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
@@ -49,7 +51,7 @@ if not creds or not creds.valid:
         creds.refresh(Request())
     else:
         flow = InstalledAppFlow.from_client_secrets_file(
-            'credentials.json', SCOPES)
+            cwd + '/graphics/credentials.json', SCOPES)
         creds = flow.run_local_server(port=0)
             # Save the credentials for the next run
     with open('token.pickle', 'wb') as token:

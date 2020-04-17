@@ -5,6 +5,8 @@
 #include <iostream>
 
 #include <vector>
+
+#include <unistd.h>
 #include <algorithm>
 
 #include <GL/glew.h>
@@ -515,7 +517,11 @@ void GraphicsModule::update_display(){
 		frame_count = 0;
 		record = false;
 		pclose(ffmpeg);
-		system("sudo python generateQR.py");
+		char temp[255];
+		getcwd(temp, sizeof(temp));
+		std::string command = "sudo python " + std::string(temp) + "/graphics/generateQR.py &";
+		cout << command << endl;
+		system(command.c_str());
 	}
 
   glfwPollEvents();
