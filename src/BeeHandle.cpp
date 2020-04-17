@@ -95,7 +95,7 @@ static void removeLastFrame(int start_idx, int end_idx, double avgPercent) {
 	}
 }
 
-BeeHandle::BeeHandle(int xwidth, int ywidth, int stepsize, double randomfactor, int numthreads, int stored_frames, double avg_percent) {
+BeeHandle::BeeHandle(int xwidth, int ywidth, int stepsize, double randomfactor, int numthreads, int stored_frames, double avg_percent, int sound_divisor) {
 	xWidth = xwidth;
 	yWidth = ywidth;
 	stepSize = stepsize;
@@ -104,6 +104,7 @@ BeeHandle::BeeHandle(int xwidth, int ywidth, int stepsize, double randomfactor, 
 	avgPercent = avg_percent;
 	storedFrames = stored_frames;
 	attractorMatrix = vector<vector<Attractor>>(xWidth, vector<Attractor>(yWidth, Attractor(0, 0)));
+	soundDivisor = sound_divisor;
 	for (int i = 0; i < attractorMatrix.size(); i++) {
 		for (int j = 0; j < attractorMatrix[0].size(); j++) {
 			attractorMatrix[i][j].x = i;
@@ -123,15 +124,15 @@ void BeeHandle::movePoints() {
 			dirs.push_back(0);
 		}
 	}
-	if(points.size()/20 > landed.size()){
-		for(int i = landed.size(); i < points.size()/20; i++){
+	if(points.size()/soundDivisor > landed.size()){
+		for(int i = landed.size(); i < points.size()/soundDivisor; i++){
 			landed.push_back(0);
 			sudo_landed.push_back(0);
 		}
 	}
 	for (int P_idx = 0; P_idx < points.size(); P_idx++) {
 		if (attractorMatrix[points[P_idx].x][points[P_idx].y].pointIdx == P_idx){
-			if(P_idx < points.size()/20){
+			if(P_idx < points.size()/soundDivisor){
 				if(sudo_landed[P_idx] == 0){
 					landed[P_idx] = 1;
 					sudo_landed[P_idx] = 1;
@@ -142,7 +143,7 @@ void BeeHandle::movePoints() {
 			}
 		}
 		else {
-			if(P_idx < points.size()/20){
+			if(P_idx < points.size()/soundDivisor){
 				landed[P_idx] = 0;
 				sudo_landed[P_idx] = 0;
 			}

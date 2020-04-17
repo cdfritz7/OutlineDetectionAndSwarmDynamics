@@ -3,7 +3,7 @@
 #include <vector>
 #include <cmath>
 #include <pthread.h>
-#include <opencv2/opencv.hpp>
+#include <opencv.hpp>
 #include <fstream>
 #include <chrono>
 #include "BeeHandle.cpp"
@@ -58,10 +58,11 @@ vector<Point> drop_contours_1d(vector<vector<Point>> contours, int prop){
 
 /*
 potential arguments :
--bees <number of bees>
--time
--scale <scale> (currently multiplied by 320x240 to get screen size)
--size <size>   (the size of each bee)
+--bees <number of bees>
+--time
+--scale <scale> (currently multiplied by 320x240 to get screen size)
+--size <size>   (the size of each bee)
+--soundb <sound divisor> (the sound divisor used for the audiohandler)
 */
 int main(int argc, char **argv) {
 
@@ -77,8 +78,9 @@ int main(int argc, char **argv) {
 	int num_bees = 1200; //number of bees
   int bee_total = 0; //time spent on bee module
 	bool time_it = false; //whether we use timing or not
+  int sound_divisor = 20; //parameter for audiohandler
 
-  	//set variables for timing
+  //set variables for timing
 	chrono::time_point<std::chrono::high_resolution_clock> time_start;
 	chrono::time_point<std::chrono::high_resolution_clock> time_stop;
 	chrono::time_point<std::chrono::high_resolution_clock> bee_start;
@@ -89,30 +91,40 @@ int main(int argc, char **argv) {
   vector<Point> set_contour;
 
 	//argument parsing
-	if(argc > 2){
+	if(argc > 1){
 		for(int i = 0; i < argc; i++){
-			if(String(argv[i]).compare("-bees")==0 && argc>(i+1) && isInteger(argv[i+1])){
+			if(String(argv[i]).compare("--bees")==0 && argc>(i+1) && isInteger(argv[i+1])){
 				num_bees = stoi(String(argv[i+1]));
 			}
 
-      if(String(argv[i]).compare("-time")==0){
+      if(String(argv[i]).compare("--time")==0){
         time_it = true;
         bee_total = 0;
         time_start = chrono::high_resolution_clock::now();
       }
 
-      if(String(argv[i]).compare("-scale")==0 && argc>(i+1) && isInteger(argv[i+1])){
+      if(String(argv[i]).compare("--scale")==0 && argc>(i+1) && isInteger(argv[i+1])){
         scale = stoi(String(argv[i+1]));
       }
 
-      if(String(argv[i]).compare("-size")==0 && argc>(i+1) && isInteger(argv[i+1])){
+      if(String(argv[i]).compare("--size")==0 && argc>(i+1) && isInteger(argv[i+1])){
         bee_size = stoi(String(argv[i+1]));
+      }
+
+      if(String(argv[i]).compare("--soundb")==0 && argc>(i+1) && isInteger(argv[i+1])){
+        sound_divisor = stoi(String(argv[i+1]));
       }
     }
   }
 
 	//create bee handler for calculating bee dynamics
-
+  //xwidth - width of matrix
+  //ywidth - height of matrix
+  //stepSize - how far a bee will move in a single frame
+  //randomFactor - how random the bee movement is [-pi/2, pi/2]
+  //numThreads - how many threads
+  //storedFrames - how many frames are stored for averaging
+  //avgPercent - % of the stored frames that must contain a contour before considering that contour
 	BeeHandle bee_handle = BeeHandle(down_width, down_height, 5, 0.8, 4, 15, (double) 1/5);
 	//bee_handle.add_bees(num_bees);
   for (int i = 0; i < num_bees; i++){
@@ -121,9 +133,9 @@ int main(int argc, char **argv) {
 
 	//BeeHandle bee_handle = BeeHandle(down_width, down_height);
 	//bee_handle.add_bees(num_bees);
-	int num_sound_bees = num_bees/20;
+	int num_sound_bees = num_bees/sound_divisor;
 
-	//AudioHandler audio = AudioHandler((int)num_sound_bees);
+	AudioHandler audio = AudioHandler((int)num_sound_bees);
 
 	//seed our random number generator
 	RNG rng(1235);
@@ -187,7 +199,6 @@ int main(int argc, char **argv) {
 		//get one frame of video and one frame of depth from the kinect
 		device.getVideo(rgbIn);
 		device.getDepth(depthIn);
-
 
 		//resize input image and depth for decreased computation
 		cv::resize(rgbIn, rgb_down, Size(down_width, down_height));
@@ -271,12 +282,12 @@ int main(int argc, char **argv) {
 		gm.update_particles(bee_x, bee_y, bee_stage, bee_dir);
 		gm.update_display();
 
-		//landed = bee_handle.get_landed();
-		//for(int i = 0; i < landed.size(); i++){
-		//	if(landed.at(i) == 1){
-		//		audio.play_sound(i);
-		//	}
-		//}
+		landed = bee_handle.get_landed();
+		for(unsigned i = 0; i < landed.size(); i++){
+			if(landed.at(i) == 1){
+				audio.play_sound(i);
+			}
+		}
 
 		//end timer for bees if timing is enabled
 		if(time_it){
@@ -300,7 +311,7 @@ int main(int argc, char **argv) {
 	}
 
 	//clean up everything we have
-	//audio.delete_sources();
+	audio.delete_sources();
 	device.stopVideo();
 	device.stopDepth();
 	finalFrame.release();
