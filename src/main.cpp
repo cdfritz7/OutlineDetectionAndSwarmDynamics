@@ -8,6 +8,7 @@
 #include <chrono>
 #include "BeeHandleSimple.hpp"
 #include "MyFreenectDevice.hpp"
+#include "AudioHandler.hpp"
 #include "./graphics/graphics_module.hpp"
 
 using namespace cv;
@@ -57,10 +58,11 @@ vector<Point> drop_contours_1d(vector<vector<Point>> contours, int prop){
 
 /*
 potential arguments :
--bees <number of bees>
--time
--scale <scale> (currently multiplied by 320x240 to get screen size)
--size <size>   (the size of each bee)
+--bees <number of bees>
+--time
+--scale <scale> (currently multiplied by 320x240 to get screen size)
+--size <size>   (the size of each bee)
+--soundb <sound divisor> (the sound divisor used for the audiohandler)
 */
 int main(int argc, char **argv) {
 
@@ -71,11 +73,14 @@ int main(int argc, char **argv) {
 	int down_height = 240;
 	int contour_drop = 1; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
-  int scale = 8; //scale for graphics window
+
+  int scale = 2;//8; //scale for graphics window
   int bee_size = 2; //size of each bee
-	int num_bees = 800; //number of bees
-  int bee_total = 0; //time spent on bee module
+
+  int num_bees = 800; //number of bees
+ 	int bee_total = 0; //time spent on bee module
 	bool time_it = false; //whether we use timing or not
+  int sound_divisor = 20; //parameter for audiohandler
 
   //set variables for timing
 	chrono::time_point<std::chrono::high_resolution_clock> time_start;
@@ -85,31 +90,37 @@ int main(int argc, char **argv) {
 	int iterations = 0;
 
 	//argument parsing
-	if(argc > 2){
+	if(argc > 1){
 		for(int i = 0; i < argc; i++){
-			if(String(argv[i]).compare("-bees")==0 && argc>(i+1) && isInteger(argv[i+1])){
+			if(String(argv[i]).compare("--bees")==0 && argc>(i+1) && isInteger(argv[i+1])){
 				num_bees = stoi(String(argv[i+1]));
 			}
 
-      if(String(argv[i]).compare("-time")==0){
+      if(String(argv[i]).compare("--time")==0){
         time_it = true;
         bee_total = 0;
         time_start = chrono::high_resolution_clock::now();
       }
 
-      if(String(argv[i]).compare("-scale")==0 && argc>(i+1) && isInteger(argv[i+1])){
+      if(String(argv[i]).compare("--scale")==0 && argc>(i+1) && isInteger(argv[i+1])){
         scale = stoi(String(argv[i+1]));
       }
 
-      if(String(argv[i]).compare("-size")==0 && argc>(i+1) && isInteger(argv[i+1])){
+      if(String(argv[i]).compare("--size")==0 && argc>(i+1) && isInteger(argv[i+1])){
         bee_size = stoi(String(argv[i+1]));
+      }
+
+      if(String(argv[i]).compare("--soundb")==0 && argc>(i+1) && isInteger(argv[i+1])){
+        sound_divisor = stoi(String(argv[i+1]));
       }
     }
   }
 
 	//create bee handler for calculating bee dynamics
-	BeeHandle bee_handle = BeeHandle(down_width, down_height);
+	BeeHandle bee_handle = BeeHandle(down_width, down_height, sound_divisor);
 	bee_handle.add_bees(num_bees);
+
+	AudioHandler audio = AudioHandler((int)num_bees/sound_divisor);
 
 	//seed our random number generator
 	RNG rng(1235);
@@ -133,6 +144,8 @@ int main(int argc, char **argv) {
 	vector<Vec4i> hierarchy;
 	vector<Point> bee_positions;
 	vector<Point> bee_attractors;
+	vector<int> landed;
+	//vector<bool> bee_trigger;
 
 	//create our connection to the connect
 	Freenect::Freenect freenect;
@@ -159,6 +172,8 @@ int main(int argc, char **argv) {
   // 0 - 7 starting north going clockwise
 	vector<int> bee_dir (num_bees);
 
+  cv::namedWindow("RGB IN", cv::WINDOW_AUTOSIZE);
+  //cv::waitKey(0);
 	//main loop
   do {
 
@@ -173,6 +188,9 @@ int main(int argc, char **argv) {
 		//resize input image and depth for decreased computation
 		cv::resize(rgbIn, rgb_down, Size(down_width, down_height));
 		cv::resize(depthIn, depth_down, Size(down_width, down_height));
+
+    cv::imshow("RGB IN", rgbIn);
+    cv::waitKey(1);
 
 		//normalize depth to 0-255 range and filter every depth past our threshold
 		depth_down.convertTo(depthf, CV_8UC3, 255.0/10000.0); //kinect caps out at 10000 mm
@@ -212,7 +230,7 @@ int main(int argc, char **argv) {
 		//get bee positions
 		bee_positions.clear();
 		bee_positions = bee_handle.get_bees();
-    bee_dir = bee_handle.get_dirs();
+    	bee_dir = bee_handle.get_dirs();
 
 		//update our graphics module
 		for(int i = 0; i < num_bees; i++){
@@ -224,6 +242,13 @@ int main(int argc, char **argv) {
 		gm.update_particles(bee_x, bee_y, bee_stage, bee_dir);
     gm.update_qr(true, "./graphics/qr.png", 320, 240, 2.0f);
 		gm.update_display();
+
+		landed = bee_handle.get_landed();
+		for(unsigned i = 0; i < landed.size(); i++){
+			if(landed.at(i) == 1){
+				audio.play_sound(i);
+			}
+		}
 
 		//end timer for bees if timing is enabled
 		if(time_it){
@@ -247,6 +272,7 @@ int main(int argc, char **argv) {
 	}
 
 	//clean up everything we have
+	audio.delete_sources();
 	device.stopVideo();
 	device.stopDepth();
 	finalFrame.release();

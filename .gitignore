@@ -1,0 +1,6 @@
+*.o
+src/main
+src/token.pickle
+src/graphics/credentials.json
+src/node_modules
+

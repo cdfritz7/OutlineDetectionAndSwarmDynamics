@@ -62,7 +62,7 @@ private:
 	ALsizei size, freq;
 	ALenum format;
 	ALuint buffer[16];
-	ALuint* source;	
+	ALuint* source;
 	ALboolean loop = AL_FALSE;
 	ALCenum error;
 	ALint source_state;
@@ -133,23 +133,22 @@ public:
 			TEST_ERROR("loading wav file");
 
 			alBufferData(buffer[i-1], format, data, size, freq);
-			TEST_ERROR("buffer copy");
-			
+			TEST_ERROR("buffer copy");		
 		}
 		for(int i=0;i<num_sound_bees;i++){
 			alSourcei(source[i], AL_BUFFER, buffer[i%16]);
 			TEST_ERROR("buffer binding");
 		}
 	}
-	
-	void play_sound(int i){	
+
+	void play_sound(int i){
 		alGetSourcei(source[i], AL_SOURCE_STATE, &source_state);
 		TEST_ERROR("source state get");
 		if(source_state != AL_PLAYING) {
-			printf("bing");
+			//printf("bing\n");
 			alSourcePlay(source[i]);
 		}
-		
+
 	}
 
 	void delete_sources(){
@@ -160,8 +159,5 @@ public:
 		alcDestroyContext(context);
 		alcCloseDevice(device);
 	}
-	
+
 };
-
-
-
