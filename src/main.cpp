@@ -276,6 +276,11 @@ int main(int argc, char **argv) {
 
     bee_handle.addAttractorsAvg(flat_contours);
 		bee_handle.updatePoints();
+		
+		int new_size = flat_contours.size();
+		for(int i=0; i<old_size-new_size; i++) {
+			flat_contours.pop_back();
+		}
 
 		//get bee positions
 		bee_positions.clear();
