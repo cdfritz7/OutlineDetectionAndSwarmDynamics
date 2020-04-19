@@ -292,7 +292,7 @@ int main(int argc, char **argv) {
         	tensorflow::TTypes<float>::Flat scores = outputs[1].flat<float>();
         	//tensorflow::TTypes<float>::Flat classes = outputs[2].flat<float>();
         	//tensorflow::TTypes<float>::Flat numDetections = outputs[3].flat<float>();
-        	//tensorflow::TTypes<float, 3>::Tensor boxes = outputs[0].flat_outer_dims<float,3>();
+        	tensorflow::TTypes<float, 3>::Tensor boxes = outputs[0].flat_outer_dims<float,3>();
 
 		vector<size_t> goodIdxs = filterBoxes(scores, boxes, thresholdIOU, thresholdScore);
 
@@ -300,7 +300,7 @@ int main(int argc, char **argv) {
         	cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
  		// LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
 		// LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
-		if(scores>0.95){
+		if(scores(goodIdxs(0))>0.95){
 			bool expected;
         		detect(session2, rgb_down, scores, boxes, goodIdxs, &expected);
 			if(expected){
