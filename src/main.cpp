@@ -300,15 +300,14 @@ int main(int argc, char **argv) {
         	cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
  		// LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
 		// LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
-		if(scores(goodIdxs.at(0))>0.95){
-			bool expected;
-        		detect(session2, rgb_down, scores, boxes, goodIdxs, &expected);
-			if(expected){
+		bool expected;
+        	detect(session2, rgb_down, scores, boxes, goodIdxs, &expected);
+		if(expected){
 
 			// Write something here is gesture hookem is detected
 
 
-			}
+			
 		}
 		imshow("rgb", rgb_down);
 

@@ -338,7 +338,7 @@ Status readTensorFromMat(const Mat &mat, Tensor &outTensor) {
 
 // detect
 void detect(unique_ptr<tensorflow::Session> &session2, Mat &image, double yMin, double xMin, double yMax, double xMax, double score, bool* is_expected, bool scaled=true) {
-    //LOG(INFO)<<"FUNC CALLED" <<endl;
+    LOG(INFO)<<"hand score" << score << endl;
     //LOG(INFO)<<"image height:"<<image.size().height<<endl;
     //LOG(INFO)<<"image width:"<<image.size().width<<endl;
     //LOG(INFO)<<"image cols:"<<image.cols<<"(xMin * image.cols):"<<(xMin * image.cols)<<endl;
@@ -448,10 +448,14 @@ void detect(unique_ptr<tensorflow::Session> &session2, Mat &image,
     //LOG(INFO)<<"Draw Box CALLED" <<endl;
     for (int j = 0; j < idxs.size(); j++){
 	//LOG(INFO)<<j<<endl;
-        detect(session2, image,
+	if(scores(idxs.at(j)) < 0.95){
+		*is_expected = false;
+	}else{
+        	detect(session2, image,
                                boxes(0,idxs.at(j),0), boxes(0,idxs.at(j),1),
                                boxes(0,idxs.at(j),2), boxes(0,idxs.at(j),3),
                                scores(idxs.at(j)), is_expected);
+	}
     }
     //LOG(INFO)<<"Draw Box ENDED" <<endl;
 }
