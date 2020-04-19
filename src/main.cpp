@@ -381,7 +381,7 @@ int main(int argc, char **argv) {
 		bee_handle.updatePoints();
 		
 		int new_size = flat_contours.size();
-		for(int i=0; i<old_size-new_size; i++) {
+		for(int i=0; i<(new_size-old_size); i++) {
 			flat_contours.pop_back();
 		}
 
