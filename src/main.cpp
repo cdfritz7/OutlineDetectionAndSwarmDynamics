@@ -6,6 +6,7 @@
 #include <opencv.hpp>
 #include <fstream>
 #include <chrono>
+#include <stdlib.h>
 #include "BeeHandle.cpp"
 #include "MyFreenectDevice.hpp"
 #include "AudioHandler.hpp"
@@ -221,6 +222,21 @@ int main(int argc, char **argv) {
 		cv::Canny(outMat, cannyResult, 50, 100, 3);
 		cv::findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1, cv::Point(0,0));
 		flat_contours = drop_contours_1d(contours, contour_drop);
+		int old_size = flat_contours.size();	
+
+		// Duplicate edges randomly for better outlines		
+		for(int i=0; i < old_size; i++) {
+			int duplicate_max = 5;
+			int num_to_duplicate = (rand() % duplicate_max);			
+			for(int j=0; j<num_to_duplicate; j++) {
+				int x_diff = (rand()%3)-1;
+				int y_diff = (rand()%3)-1;
+				int new_x = flat_contours.at(i).x + x_diff;
+				int new_y = flat_contours.at(i).y + y_diff;
+				flat_contours.push_back(cv::Point(new_x, new_y));
+			
+			}	
+		}
 
 		//if we have a dropped frame, check if it's a one off, or if there's nothing
 		//being recorded
