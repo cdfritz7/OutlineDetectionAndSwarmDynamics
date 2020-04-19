@@ -269,46 +269,46 @@ int main(int argc, char **argv) {
 		//get one frame of video and one frame of depth from the kinect
 		device.getVideo(rgbIn);
 		device.getDepth(depthIn);
+		
+		if(iterations%60==0) {
+			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
 
-		cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
+			// Convert mat to tensor
+			tensor = Tensor(tensorflow::DT_FLOAT, shape);
+			Status read_tensor_status = readTensorFromMat(rgb_down, tensor);
+			if (!read_tensor_status.ok()) {
+		 	   LOG(ERROR) << "Mat->Tensor conversion failed: " << read_tensor_status;
+	   	         return -1;
+			}
 
-        	// Convert mat to tensor
-        	tensor = Tensor(tensorflow::DT_FLOAT, shape);
-        	Status read_tensor_status = readTensorFromMat(rgb_down, tensor);
-        	if (!read_tensor_status.ok()) {
-         	   LOG(ERROR) << "Mat->Tensor conversion failed: " << read_tensor_status;
-   	         return -1;
-        	}
+	 	      	// Run the graph on tensor
+	 	       	outputs.clear();
+	 	       	Status runStatus = session->Run({{inputLayer, tensor}}, outputLayer, {}, &outputs);
+	 	       	if (!runStatus.ok()) {
+	 	           LOG(ERROR) << "Running model failed: " << runStatus;
+	 	           return -1;
+	   	     	}
 
- 	      	// Run the graph on tensor
- 	       	outputs.clear();
- 	       	Status runStatus = session->Run({{inputLayer, tensor}}, outputLayer, {}, &outputs);
- 	       	if (!runStatus.ok()) {
- 	           LOG(ERROR) << "Running model failed: " << runStatus;
- 	           return -1;
-   	     	}
+	    	    	// Extract results from the outputs vector
+			tensorflow::TTypes<float>::Flat scores = outputs[1].flat<float>();
+			//tensorflow::TTypes<float>::Flat classes = outputs[2].flat<float>();
+			//tensorflow::TTypes<float>::Flat numDetections = outputs[3].flat<float>();
+			tensorflow::TTypes<float, 3>::Tensor boxes = outputs[0].flat_outer_dims<float,3>();
 
-    	    	// Extract results from the outputs vector
-        	tensorflow::TTypes<float>::Flat scores = outputs[1].flat<float>();
-        	//tensorflow::TTypes<float>::Flat classes = outputs[2].flat<float>();
-        	//tensorflow::TTypes<float>::Flat numDetections = outputs[3].flat<float>();
-        	tensorflow::TTypes<float, 3>::Tensor boxes = outputs[0].flat_outer_dims<float,3>();
+			vector<size_t> goodIdxs = filterBoxes(scores, boxes, thresholdIOU, thresholdScore);
 
-		vector<size_t> goodIdxs = filterBoxes(scores, boxes, thresholdIOU, thresholdScore);
+			// Draw boxes and captions
+			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
+	 		// LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
+			// LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
+			bool expected;
+			detect(session2, rgb_down, scores, boxes, goodIdxs, &expected);
+			if(expected){
 
-        	// Draw boxes and captions
-        	cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
- 		// LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
-		// LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
-		bool expected;
-        	detect(session2, rgb_down, scores, boxes, goodIdxs, &expected);
-		if(expected){
-
-			// Write something here is gesture hookem is detected
-
-
-			
+				// Write something here is gesture hookem is detected			
+			}
 		}
+
 		imshow("rgb", rgb_down);
 
 		//resize input image and depth for decreased computation
