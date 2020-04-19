@@ -344,7 +344,7 @@ int main(int argc, char **argv) {
 				int new_x = flat_contours.at(i).x + x_diff;
 				int new_y = flat_contours.at(i).y + y_diff;
 				if(new_x >= 0 && new_y >= 0)
-					if(new_x <= down_width && new_y <=down_height)
+					if(new_x < down_width && new_y < down_height)
 						flat_contours.push_back(cv::Point(new_x, new_y));
 			
 			}	
