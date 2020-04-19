@@ -112,7 +112,7 @@ public:
 			TEST_ERROR("source pitch");
 			alSourcef(source[i], AL_GAIN, .5);
 			TEST_ERROR("source gain");
-			alSource3f(source[i], AL_POSITION, 0, 0, 0);
+			alSource3f(source[i], AL_POSITION, width/2, height/2, 1.0f);
 			TEST_ERROR("source position");
 			alSource3f(source[i], AL_VELOCITY, 0, 0, 0);
 			TEST_ERROR("source velocity");
@@ -152,7 +152,10 @@ public:
 			//printf("bing\n");
 			alSourcePlay(source[i]);
 		}
-
+	}
+	void set_point(int i, int x, int y){
+		alSource3f(source[i], AL_POSITION, x, y, 1.0f);
+		TEST_ERROR("source position");
 	}
 
 	void delete_sources(){
