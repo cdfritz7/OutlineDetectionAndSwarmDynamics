@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
 	//BeeHandle bee_handle = BeeHandle(down_width, down_height);
 	//bee_handle.add_bees(num_bees);
 
-	AudioHandler audio = AudioHandler(width,height);
+	AudioHandler audio = AudioHandler(down_width, down_height);
 
 	//seed our random number generator
 	RNG rng(1235);
@@ -186,6 +186,7 @@ int main(int argc, char **argv) {
 
   // 0 - 7 starting north going clockwise
 	vector<int> bee_dir (num_bees);
+  vector<int> bee_landed;
 
   cv::namedWindow("RGB IN", cv::WINDOW_AUTOSIZE);
   //cv::waitKey(0);
@@ -274,24 +275,24 @@ int main(int argc, char **argv) {
     bee_landed = bee_handle.get_landed();
     for(int i = 0; i < num_bees/sound_divisor; i++){
       if(bee_landed[i] == 1){
-        if(bee_positions[i].x < width/2 && bee_positions[i].y < height/2;){
+        if(bee_positions[i].x < down_width/2 && bee_positions[i].y < down_height/2){
           randgen = rand() % 8;
-          audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y)
+          audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
           audio.play_sound(randgen);
         }
-        if(bee_positions[i].x < width/2 && bee_positions[i].y >= height/2;){
+        if(bee_positions[i].x < down_width/2 && bee_positions[i].y >= down_height/2){
           randgen = rand() % 8 + 8;
-          audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y)
+          audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
           audio.play_sound(randgen);
         }
-        if(bee_positions[i].x >= width/2 && bee_positions[i].y < height/2;){
+        if(bee_positions[i].x >= down_width/2 && bee_positions[i].y < down_height/2){
           randgen = rand() % 8 + 16;
-          audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y)
+          audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
           audio.play_sound(randgen);
         }
-        if(bee_positions[i].x >= width/2 && bee_positions[i].y >= height/2;){
+        if(bee_positions[i].x >= down_width/2 && bee_positions[i].y >= down_height/2){
           randgen = rand() % 8 + 24;
-          audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y)
+          audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
           audio.play_sound(randgen);
         }
       }

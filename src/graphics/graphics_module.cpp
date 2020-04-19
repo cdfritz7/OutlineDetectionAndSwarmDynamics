@@ -22,7 +22,6 @@ using namespace std;
 
 #include <string.h>
 #include <errno.h>
-#include <curses.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -33,7 +32,6 @@ using namespace std;
 #include "common/controls.hpp"
 #include "common/text2D.hpp"
 #include "graphics_module.hpp"
-#include "qrencode.h"
 
 //qr code stuff
 #define OUT_FILE					"./test.bmp"								// Output file name

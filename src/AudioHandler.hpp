@@ -61,7 +61,7 @@ private:
 	ALCcontext *context;
 	ALsizei size, freq;
 	ALenum format;
-	ALuint buffer[16];
+	ALuint buffer[32];
 	ALuint* source;
 	ALboolean loop = AL_FALSE;
 	ALCenum error;
@@ -76,6 +76,8 @@ public:
 		enumeration = alcIsExtensionPresent(NULL, "ALC_ENUMERATION_EXT");
 		if (enumeration == AL_FALSE)
 			fprintf(stderr, "enumeration extension not available\n");
+
+		alDistanceModel(AL_EXPONENT_DISTANCE_CLAMPED);
 
 		list_audio_devices(alcGetString(NULL, ALC_DEVICE_SPECIFIER));
 
@@ -99,7 +101,9 @@ public:
 		/* set orientation */
 		alListener3f(AL_POSITION, width/2, height/2, 1.0f);
 		TEST_ERROR("listener position");
-			alListener3f(AL_VELOCITY, 0, 0, 0);
+		alListenerf(AL_GAIN, 3.5 );
+		TEST_ERROR("listener gain");
+		alListener3f(AL_VELOCITY, 0, 0, 0);
 		TEST_ERROR("listener velocity");
 		alListenerfv(AL_ORIENTATION, listenerOri);
 		TEST_ERROR("listener orientation");
@@ -110,12 +114,14 @@ public:
 		for(int i=0;i<32;i++){
 			alSourcef(source[i], AL_PITCH, 1);
 			TEST_ERROR("source pitch");
-			alSourcef(source[i], AL_GAIN, .5);
+			alSourcef(source[i], AL_GAIN, 1);
 			TEST_ERROR("source gain");
 			alSource3f(source[i], AL_POSITION, width/2, height/2, 1.0f);
 			TEST_ERROR("source position");
 			alSource3f(source[i], AL_VELOCITY, 0, 0, 0);
 			TEST_ERROR("source velocity");
+			alSourcei(source[i], AL_MAX_DISTANCE, 800);
+			TEST_ERROR("max distance");
 			alSourcei(source[i], AL_LOOPING, AL_FALSE);
 			TEST_ERROR("source looping");
 		}
@@ -126,23 +132,23 @@ public:
 		//load new .wavs
 		for(int i=1;i<=32;i++){
 			int length = snprintf( NULL, 0, "%d", i );
-			char* str = (char*)malloc( length + 1 );
-			snprintf( str, length + 1, "%d", i);
-			char flnm[] = ".wav";
-			flhdr[] = "./sounds/"
-			strcat(str,flnm);
-			strcat(flhdr,str);
-			alutLoadWAVFile(flhdr, &format, &data, &size, &freq, (ALboolean*)&loop);
+			string str = to_string(i);
+			string flnm = ".wav";
+			string flhdr = "./sounds/";
+			string file_name = flhdr+str+flnm;
+			alutLoadWAVFile(file_name.c_str(), &format, &data, &size, &freq, (ALboolean*)&loop);
 			TEST_ERROR("loading wav file");
 
 			alBufferData(buffer[i-1], format, data, size, freq);
 			TEST_ERROR("buffer copy");
 
 		}
+
 		for(int i=0;i<32;i++){
 			alSourcei(source[i], AL_BUFFER, buffer[i]);
 			TEST_ERROR("buffer binding");
 		}
+
 	}
 
 	void play_sound(int i){
