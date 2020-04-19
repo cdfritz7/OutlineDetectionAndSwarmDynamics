@@ -133,8 +133,7 @@ public:
 			TEST_ERROR("loading wav file");
 
 			alBufferData(buffer[i-1], format, data, size, freq);
-			TEST_ERROR("buffer copy");
-
+			TEST_ERROR("buffer copy");		
 		}
 		for(int i=0;i<num_sound_bees;i++){
 			alSourcei(source[i], AL_BUFFER, buffer[i%16]);
