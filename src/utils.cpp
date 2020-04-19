@@ -233,7 +233,7 @@ Status PrintTopLabels(const std::vector<Tensor>& outputs,
   TF_RETURN_IF_ERROR(GetTopLabels(outputs, how_many_labels, &indices, &scores));
   tensorflow::TTypes<float>::Flat scores_flat = scores.flat<float>();
   tensorflow::TTypes<int32>::Flat indices_flat = indices.flat<int32>();
-  LOG(INFO) << "Print labels with score" << endl;
+  // LOG(INFO) << "Print labels with score" << endl;
   for (int pos = 0; pos < how_many_labels; ++pos) {
     const int label_index = indices_flat(pos);
     const float score = scores_flat(pos);
@@ -336,10 +336,8 @@ Status readTensorFromMat(const Mat &mat, Tensor &outTensor) {
     return Status::OK();
 }
 
-/** Draw bounding box and add caption to the image.
- *  Boolean flag _scaled_ shows if the passed coordinates are in relative units (true by default in tensorflow detection)
- */
-void drawBoundingBoxOnImage(unique_ptr<tensorflow::Session> &session2, Mat &image, double yMin, double xMin, double yMax, double xMax, double score, string label, bool scaled=true) {
+// detect
+void detect(unique_ptr<tensorflow::Session> &session2, Mat &image, double yMin, double xMin, double yMax, double xMax, double score, bool* is_expected, bool scaled=true) {
     //LOG(INFO)<<"FUNC CALLED" <<endl;
     //LOG(INFO)<<"image height:"<<image.size().height<<endl;
     //LOG(INFO)<<"image width:"<<image.size().width<<endl;
@@ -373,23 +371,7 @@ void drawBoundingBoxOnImage(unique_ptr<tensorflow::Session> &session2, Mat &imag
     //cv::medianBlur(resized, resized, 7);
     //cv::imshow("roi",roi);
     cv::imshow("resized",resized);
-/*
-    cv::cvtColor(resized, resized, cv::COLOR_BGR2GRAY);
-    cv::Canny(resized,imgcanny,100,200);
-    cv::imshow("imgcanny",imgcanny);
-    int array[columnResized][rowResized];
-    for (int i=0; i<imgcanny.cols;i++){
-	for (int j=0; j<imgcanny.rows;j++){
-	     int val = imgcanny.at<int>(i,j);
-	     if(val!=0){
-		 val = 1;
-	     }
-	     array[i][j] = val;
-	     // cout << array[i][j] <<" ";
-	}
-	// cout << endl;
-    }
-*/
+
     int depth = 3;
     tensorflow::TensorShape shape = tensorflow::TensorShape();
     shape.AddDim(1);
@@ -450,37 +432,27 @@ void drawBoundingBoxOnImage(unique_ptr<tensorflow::Session> &session2, Mat &imag
     if (!print_status.ok()) {
         LOG(ERROR) << "Running print failed: " << print_status;
     }
-    
-    // Ceiling the score down to 3 decimals (weird!)
-    float scoreRounded = floorf(score * 1000) / 1000;
-    string scoreString = to_string(scoreRounded).substr(0, 5);
-    string caption = label + " (" + scoreString + ")";
-
-    // Adding caption of type "LABEL (X.XXX)" to the top-left corner of the bounding box
-    int fontCoeff = 12;
-    cv::Point brRect = cv::Point(tl.x + caption.length() * fontCoeff / 1.6, tl.y + fontCoeff);
-    cv::rectangle(image, tl, brRect, cv::Scalar(0, 255, 255), -1);
-    cv::Point textCorner = cv::Point(tl.x, tl.y + fontCoeff * 0.9);
-    cv::putText(image, caption, textCorner, FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(255, 0, 0));
-
+    // LOG(INFO) >> "Check top labels" << endl;
+    int expected = 1;
+    Status check_status = CheckTopLabel(outputs, expected, is_expected);
+    if (!check_status.ok()) {
+        LOG(ERROR) << "Running check top label failed: " << check_status;
+    }
 }
 
-/** Draw bounding boxes and add captions to the image.
- *  Box is drawn only if corresponding score is higher than the _threshold_.
- */
-void drawBoundingBoxesOnImage(unique_ptr<tensorflow::Session> &session2, Mat &image,
+// detect
+void detect(unique_ptr<tensorflow::Session> &session2, Mat &image,
                               tensorflow::TTypes<float>::Flat &scores,
-                              tensorflow::TTypes<float>::Flat &classes,
                               tensorflow::TTypes<float,3>::Tensor &boxes,
-                              map<int, string> &labelsMap,
-                              vector<size_t> &idxs) {
+                              vector<size_t> &idxs, bool* is_expected) {
     //LOG(INFO)<<"Draw Box CALLED" <<endl;
     for (int j = 0; j < idxs.size(); j++){
 	//LOG(INFO)<<j<<endl;
-        drawBoundingBoxOnImage(session2, image,
+        detect(session2, image,
                                boxes(0,idxs.at(j),0), boxes(0,idxs.at(j),1),
                                boxes(0,idxs.at(j),2), boxes(0,idxs.at(j),3),
-                               scores(idxs.at(j)), labelsMap[classes(idxs.at(j))]);
+			       is_expected,
+                               scores(idxs.at(j)));
     }
     //LOG(INFO)<<"Draw Box ENDED" <<endl;
 }

@@ -39,14 +39,12 @@ Status loadGraph(const string &graph_file_name,
 
 Status readTensorFromMat(const cv::Mat &mat, Tensor &outTensor);
 
-void drawBoundingBoxOnImage(std::unique_ptr<tensorflow::Session> &session2, cv::Mat &image, double xMin, double yMin, double xMax, double yMax, double score, std::string label, bool scaled);
+void detect(std::unique_ptr<tensorflow::Session> &session2, cv::Mat &image, double xMin, double yMin, double xMax, double yMax, double score, bool* is_expected, bool scaled);
 
-void drawBoundingBoxesOnImage(std::unique_ptr<tensorflow::Session> &session2, cv::Mat &image,
+void detect(std::unique_ptr<tensorflow::Session> &session2, cv::Mat &image,
                               tensorflow::TTypes<float>::Flat &scores,
-                              tensorflow::TTypes<float>::Flat &classes,
                               tensorflow::TTypes<float,3>::Tensor &boxes,
-                              std::map<int, string> &labelsMap,
-                              std::vector<size_t> &idxs);
+                              std::vector<size_t> &idxs, bool* is_expected);
 
 double IOU(cv::Rect box1, cv::Rect box2);
 

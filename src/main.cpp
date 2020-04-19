@@ -196,9 +196,9 @@ int main(int argc, char **argv) {
 
 	//load hand labels
 	std::map<int, std::string> labels_map = std::map<int,std::string>();
-	Status readLabelsMapStatus = readLabelsMapFile(tensorflow::io::JoinPath(rootdir, hand_labels), labels_map);
-	if (!readLabelsMapStatus.ok()) {
-	    LOG(ERROR) << "readLabelsMapFile(): ERROR" << readLabelsMapStatus;
+	Status read_labels_status = readLabelsMapFile(tensorflow::io::JoinPath(rootdir, hand_labels), labels_map);
+	if (!read_labels_status.ok()) {
+	    LOG(ERROR) << "readLabelsMapFile(): ERROR" << read_labels_status;
 	    return -1;
 	}
 
@@ -274,9 +274,9 @@ int main(int argc, char **argv) {
 
         	// Convert mat to tensor
         	tensor = Tensor(tensorflow::DT_FLOAT, shape);
-        	Status readTensorStatus = readTensorFromMat(rgb_down, tensor);
-        	if (!readTensorStatus.ok()) {
-         	   LOG(ERROR) << "Mat->Tensor conversion failed: " << readTensorStatus;
+        	Status read_tensor_status = readTensorFromMat(rgb_down, tensor);
+        	if (!read_tensor_status.ok()) {
+         	   LOG(ERROR) << "Mat->Tensor conversion failed: " << read_tensor_status;
    	         return -1;
         	}
 
@@ -290,18 +290,26 @@ int main(int argc, char **argv) {
 
     	    	// Extract results from the outputs vector
         	tensorflow::TTypes<float>::Flat scores = outputs[1].flat<float>();
-        	tensorflow::TTypes<float>::Flat classes = outputs[2].flat<float>();
+        	//tensorflow::TTypes<float>::Flat classes = outputs[2].flat<float>();
         	//tensorflow::TTypes<float>::Flat numDetections = outputs[3].flat<float>();
-        	tensorflow::TTypes<float, 3>::Tensor boxes = outputs[0].flat_outer_dims<float,3>();
+        	//tensorflow::TTypes<float, 3>::Tensor boxes = outputs[0].flat_outer_dims<float,3>();
 
 		vector<size_t> goodIdxs = filterBoxes(scores, boxes, thresholdIOU, thresholdScore);
 
         	// Draw boxes and captions
         	cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
- 		LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
-		LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
-        	drawBoundingBoxesOnImage(session2, rgb_down, scores, classes, boxes, labels_map, goodIdxs);
+ 		// LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
+		// LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
+		if(scores>0.95){
+			bool expected;
+        		detect(session2, rgb_down, scores, boxes, goodIdxs, &expected);
+			if(expected){
 
+			// Write something here is gesture hookem is detected
+
+
+			}
+		}
 		imshow("rgb", rgb_down);
 
 		//resize input image and depth for decreased computation
