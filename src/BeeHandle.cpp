@@ -300,6 +300,10 @@ void BeeHandle::addAttractorsAvg(vector<cv::Point> new_attractors) {
 	// Cannot be done in parallel - O(f)
 	for (int i = new_attractors.size()-1; i >= 0; i--) {
 		// If a contour in that position already exists, remove
+		/*cout << "new_attractors[i].x" << new_attractors[i].x << std::endl;
+		cout << "xWidth" << xWidth << std::endl;
+		cout << "new_attractors[i].y" << new_attractors[i].y << std::endl;
+		cout << "yWidth" << yWidth << std::endl << std::endl;*/
 		if (temp[new_attractors[i].x][new_attractors[i].y] == 1) {
 			new_attractors.erase(new_attractors.begin() + i);
 		}

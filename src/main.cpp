@@ -343,10 +343,14 @@ int main(int argc, char **argv) {
 				int y_diff = (rand()%3)-1;
 				int new_x = flat_contours.at(i).x + x_diff;
 				int new_y = flat_contours.at(i).y + y_diff;
-				flat_contours.push_back(cv::Point(new_x, new_y));
+				if(new_x >= 0 && new_y >= 0)
+					if(new_x <= down_width && new_y <=down_height)
+						flat_contours.push_back(cv::Point(new_x, new_y));
 			
 			}	
 		}
+		//cout << "bees: " << num_bees << std::endl;
+		//cout << "contours: " << flat_contours.size() << std::endl << std::endl;
 
 		//if we have a dropped frame, check if it's a one off, or if there's nothing
 		//being recorded
