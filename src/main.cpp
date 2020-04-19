@@ -301,7 +301,7 @@ int main(int argc, char **argv) {
 			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
 	 		// LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
 			// LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
-			bool expected;
+			bool expected = false;
 			detect(session2, rgb_down, scores, boxes, goodIdxs, &expected);
 			if(expected){
 

@@ -237,7 +237,11 @@ Status PrintTopLabels(const std::vector<Tensor>& outputs,
   for (int pos = 0; pos < how_many_labels; ++pos) {
     const int label_index = indices_flat(pos);
     const float score = scores_flat(pos);
-    LOG(INFO) << labels[label_index] << " (" << label_index << "): " << score;
+    if(score >= 0.9 && label_index == 2){
+    	LOG(INFO) << labels[label_index] << " (" << label_index << "): " << score;
+    }else if(score >= 0.7 && label_index != 2){
+    	LOG(INFO) << labels[label_index] << " (" << label_index << "): " << score;
+    }
   }
   return Status::OK();
 }
@@ -251,13 +255,17 @@ Status CheckTopLabel(const std::vector<Tensor>& outputs, int expected,
   Tensor scores;
   const int how_many_labels = 1;
   TF_RETURN_IF_ERROR(GetTopLabels(outputs, how_many_labels, &indices, &scores));
+  
   tensorflow::TTypes<int32>::Flat indices_flat = indices.flat<int32>();
-  if (indices_flat(0) != expected) {
-    LOG(ERROR) << "Expected label #" << expected << " but got #"
-               << indices_flat(0);
-    *is_expected = false;
-  } else {
-    *is_expected = true;
+  tensorflow::TTypes<float>::Flat scores_flat = scores.flat<float>();
+  const float score = scores_flat(0);
+  if (score >=0.7) {
+	  if (indices_flat(0) != expected) {
+	    // LOG(ERROR) << "Expected label #" << expected << " but got #" << indices_flat(0);
+	    *is_expected = false;
+	  } else {
+	    *is_expected = true;
+	  }
   }
   return Status::OK();
 }
@@ -417,7 +425,7 @@ void detect(unique_ptr<tensorflow::Session> &session2, Mat &image, double yMin, 
     // string of input layer and output layer
     string input_layer = "firstConv2D_input";
     string output_layer = "k2tfout_0";
-    string gesture_labels = "./pbfiles/gesture_map.txt";
+    string gesture_labels = "../pbfiles/gesture_map.txt";
 
     std::vector<Tensor> outputs;
     Status run_status = session2->Run({{input_layer, resized_tensor}},
@@ -445,10 +453,9 @@ void detect(unique_ptr<tensorflow::Session> &session2, Mat &image,
                               tensorflow::TTypes<float>::Flat &scores,
                               tensorflow::TTypes<float,3>::Tensor &boxes,
                               vector<size_t> &idxs, bool* is_expected) {
-    //LOG(INFO)<<"Draw Box CALLED" <<endl;
     for (int j = 0; j < idxs.size(); j++){
 	//LOG(INFO)<<j<<endl;
-	if(scores(idxs.at(j)) < 0.95){
+	if(scores(idxs.at(j)) < 0.7){
 		*is_expected = false;
 	}else{
         	detect(session2, image,
@@ -457,7 +464,6 @@ void detect(unique_ptr<tensorflow::Session> &session2, Mat &image,
                                scores(idxs.at(j)), is_expected);
 	}
     }
-    //LOG(INFO)<<"Draw Box ENDED" <<endl;
 }
 
 /** Calculate intersection-over-union (IOU) for two given bbox Rects.
