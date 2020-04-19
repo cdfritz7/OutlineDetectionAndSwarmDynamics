@@ -2,14 +2,14 @@ all: main
 
 CFLAGS=-fPIC -g -Wall `pkg-config --cflags opencv` -fpermissive
 LIBS = `pkg-config --libs opencv`
-INCLUDE = -I/usr/include/libusb-1.0/ -I/usr/local/include/opencv4/opencv2/
+INCLUDE = -Wl, -rpath='$ORGIN/lib' -Llib -I/usr/include/libusb-1.0/ -I/usr/local/include/opencv4/opencv2/
 FREE_LIBS = -lfreenect -lpthread -lglfw3 -lGLEW -lGL -lm -lXrandr -lXi -lX11 -ldl -lXxf86vm -lpthread -lopenal -lalut
 
 GRAPHICS_CFLAGS = -fPIC -g -Wall
 GRAPHICS_LIBS = -lglfw3 -lGLEW -lGL -lm -lXrandr -lXi -lX11 -ldl -lXxf86vm -lpthread
 
 main:  main.cpp ./graphics/graphics_module.o ./graphics/common/shader.o ./graphics/common/objloader.o ./graphics/common/texture.o ./graphics/common/controls.o ./graphics/common/text2D.o
-	$(CXX) $(INCLUDE) $(CFLAGS) $? -o $@ $(LIBS) $(FREE_LIBS)
+	$(CXX) $(INCLUDE) $(CFLAGS) $? -ltensorflow_cc -ltensorflow_framework -o $@ $(LIBS) $(FREE_LIBS)
 
 ./graphics/graphics_module.o: ./graphics/graphics_module.cpp
 	$(CXX) -c $(GRAPHICS_CFLAGS) $< -o $@ $(GRAPHICS_LIBS)
