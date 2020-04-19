@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
 	//bee_handle.add_bees(num_bees);
 	int num_sound_bees = num_bees/sound_divisor;
 
-	AudioHandler audio = AudioHandler((int)num_sound_bees);
+	AudioHandler audio = AudioHandler(width,height);
 
 	//seed our random number generator
 	RNG rng(1235);
