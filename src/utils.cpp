@@ -451,7 +451,6 @@ void detect(unique_ptr<tensorflow::Session> &session2, Mat &image,
         detect(session2, image,
                                boxes(0,idxs.at(j),0), boxes(0,idxs.at(j),1),
                                boxes(0,idxs.at(j),2), boxes(0,idxs.at(j),3),
-			       is_expected,
                                scores(idxs.at(j)), is_expected);
     }
     //LOG(INFO)<<"Draw Box ENDED" <<endl;
