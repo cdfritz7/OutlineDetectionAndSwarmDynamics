@@ -7,7 +7,8 @@
 #include <opencv2/opencv.hpp>
 #include <fstream>
 #include <chrono>
-#include "BeeHandleSimple.hpp"
+#include <stdlib.h>
+#include "BeeHandle.cpp"
 #include "MyFreenectDevice.hpp"
 #include "AudioHandler.hpp"
 #include "./graphics/graphics_module.hpp"
@@ -95,12 +96,10 @@ int main(int argc, char **argv) {
 	int down_height = 240;
 	int contour_drop = 1; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
-
-  int scale = 2;//8; //scale for graphics window
+  int scale = 2; //scale for graphics window
   int bee_size = 2; //size of each bee
-
-  int num_bees = 800; //number of bees
- 	int bee_total = 0; //time spent on bee module
+	int num_bees = 1200; //number of bees
+  int bee_total = 0; //time spent on bee module
 	bool time_it = false; //whether we use timing or not
   int sound_divisor = 20; //parameter for audiohandler
 
@@ -110,6 +109,9 @@ int main(int argc, char **argv) {
 	chrono::time_point<std::chrono::high_resolution_clock> bee_start;
 	chrono::time_point<std::chrono::high_resolution_clock> bee_stop;
 	int iterations = 0;
+
+  int contour_count = 0;
+  vector<Point> set_contour;
 
 	//argument parsing
 	if(argc > 1){
@@ -139,10 +141,24 @@ int main(int argc, char **argv) {
   }
 
 	//create bee handler for calculating bee dynamics
-	BeeHandle bee_handle = BeeHandle(down_width, down_height, sound_divisor);
-	bee_handle.add_bees(num_bees);
+  //xwidth - width of matrix
+  //ywidth - height of matrix
+  //stepSize - how far a bee will move in a single frame
+  //randomFactor - how random the bee movement is [-pi/2, pi/2]
+  //numThreads - how many threads
+  //storedFrames - how many frames are stored for averaging
+  //avgPercent - % of the stored frames that must contain a contour before considering that contour
+	BeeHandle bee_handle = BeeHandle(down_width, down_height, 5, 0.8, 4, 15, (double) 1/5);
+	//bee_handle.add_bees(num_bees);
+  for (int i = 0; i < num_bees; i++){
+    bee_handle.addP();
+  }
 
-	AudioHandler audio = AudioHandler((int)num_bees/sound_divisor);
+	//BeeHandle bee_handle = BeeHandle(down_width, down_height);
+	//bee_handle.add_bees(num_bees);
+	int num_sound_bees = num_bees/sound_divisor;
+
+	AudioHandler audio = AudioHandler((int)num_sound_bees);
 
 	//seed our random number generator
 	RNG rng(1235);
@@ -292,8 +308,8 @@ int main(int argc, char **argv) {
 		cv::resize(rgbIn, rgb_down, Size(down_width, down_height));
 		cv::resize(depthIn, depth_down, Size(down_width, down_height));
 
-    		cv::imshow("RGB IN", rgbIn);
-    		cv::waitKey(1);
+		cv::imshow("RGB IN", rgbIn);
+		cv::waitKey(1);
 
 		//normalize depth to 0-255 range and filter every depth past our threshold
 		depth_down.convertTo(depthf, CV_8UC3, 255.0/10000.0); //kinect caps out at 10000 mm
@@ -309,6 +325,21 @@ int main(int argc, char **argv) {
 		cv::Canny(outMat, cannyResult, 50, 100, 3);
 		cv::findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1, cv::Point(0,0));
 		flat_contours = drop_contours_1d(contours, contour_drop);
+		int old_size = flat_contours.size();	
+
+		// Duplicate edges randomly for better outlines		
+		for(int i=0; i < old_size; i++) {
+			int duplicate_max = 5;
+			int num_to_duplicate = (rand() % duplicate_max);			
+			for(int j=0; j<num_to_duplicate; j++) {
+				int x_diff = (rand()%3)-1;
+				int y_diff = (rand()%3)-1;
+				int new_x = flat_contours.at(i).x + x_diff;
+				int new_y = flat_contours.at(i).y + y_diff;
+				flat_contours.push_back(cv::Point(new_x, new_y));
+			
+			}	
+		}
 
 		//if we have a dropped frame, check if it's a one off, or if there's nothing
 		//being recorded
@@ -326,14 +357,45 @@ int main(int argc, char **argv) {
 			bee_start = chrono::high_resolution_clock::now();
 		}
 
+    //if(1000 > contour_count){
+      //printf("%d\n", contour_count);
+    //  contour_count++;
+    //  bee_handle.addAttractorsAvg(flat_contours);
+    //} else if (contour_count == 1000){
+    //  printf("%d\n", contour_count);
+    //  contour_count++;
+    //  set_contour = flat_contours;
+    //  bee_handle.addAttractorsAvg(set_contour);
+    //} else if (contour_count > 2000){
+    //  bee_handle.addAttractorsAvg(flat_contours);
+    //} else {
+    //  //printf("%d\n", contour_count);
+    //  contour_count++;
+    //  bee_handle.addAttractorsAvg(set_contour);
+    //}
+
 		//flatten contours and add as "flowers" to bee_handle
-		bee_handle.add_flowers(flat_contours);
-		bee_handle.update_movement(2);
+		//bee_handle.add_flowers(flat_contours);
+
+    bee_handle.addAttractorsAvg(flat_contours);
+		bee_handle.updatePoints();
+		
+		int new_size = flat_contours.size();
+		for(int i=0; i<old_size-new_size; i++) {
+			flat_contours.pop_back();
+		}
 
 		//get bee positions
 		bee_positions.clear();
-		bee_positions = bee_handle.get_bees();
-    		bee_dir = bee_handle.get_dirs();
+    
+		//bee_positions = bee_handle.get_bees();
+    bee_positions = bee_handle.getPoints();
+    //bee_positions = flat_contours;
+    //std::vector<Point> combined(flat_contours);
+    //std::vector<Point> bh_points = bee_handle.getPoints();
+    //combined.insert(combined.end(), bh_points.begin(), bh_points.end());
+    //bee_positions = combined;
+    bee_dir = bee_handle.get_dirs();
 
 		//update our graphics module
 		for(int i = 0; i < num_bees; i++){
