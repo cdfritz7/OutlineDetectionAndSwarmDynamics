@@ -104,7 +104,7 @@ public:
 		/* set orientation */
 		alListener3f(AL_POSITION, width/2, height/2, 1.0f);
 		TEST_ERROR("listener position");
-		alListenerf(AL_GAIN, 2. );
+		alListenerf(AL_GAIN, 0.8 );
 		TEST_ERROR("listener gain");
 		alListener3f(AL_VELOCITY, 0, 0, 0);
 		TEST_ERROR("listener velocity");
@@ -115,15 +115,23 @@ public:
 		TEST_ERROR("source generation");
 
 		for(int i=0;i<buffnum;i++){
+
+			float gain = 1.0;
+			if(i >=9  && i <= 16)
+				gain = 0.7;
+
+			if(i >= 17 && i <= 24)
+				gain = 0.8;
+
 			alSourcef(source[i], AL_PITCH, 1);
 			TEST_ERROR("source pitch");
-			alSourcef(source[i], AL_GAIN, 1);
+			alSourcef(source[i], AL_GAIN, gain);
 			TEST_ERROR("source gain");
 			alSource3f(source[i], AL_POSITION, width/2, height/2, 1.0f);
 			TEST_ERROR("source position");
 			alSource3f(source[i], AL_VELOCITY, 0, 0, 0);
 			TEST_ERROR("source velocity");
-			alSourcei(source[i], AL_MAX_DISTANCE, 800);
+			alSourcei(source[i], AL_MAX_DISTANCE, 400);
 			TEST_ERROR("max distance");
 			alSourcei(source[i], AL_LOOPING, AL_FALSE);
 			TEST_ERROR("source looping");
@@ -144,7 +152,7 @@ public:
 			TEST_ERROR("loading wav file");
 
 			alBufferData(buffer[i-1], format, data, size, freq);
-			TEST_ERROR("buffer copy");		
+			TEST_ERROR("buffer copy");
 		}
 
 		for(int i=0;i<buffnum;i++){

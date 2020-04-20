@@ -27,7 +27,6 @@
 #include "tensorflow/core/public/session.h"
 #include "tensorflow/core/util/command_line_flags.h"
 
-
 using namespace cv;
 using namespace std;
 
@@ -186,7 +185,8 @@ int main(int argc, char **argv) {
 	Mat outMat = Mat::zeros(Size(width, height),CV_8UC1);
 	Mat finalFrame = Mat::zeros(Size(down_width, down_height), CV_8UC1);
 
-//path variables
+
+  //path variables
         string rootdir = "./pbfiles/";
     	string hand_labels = "labels_map.pbtxt";
 	string hand_graph = "frozen_inference_graph.pb";
@@ -298,6 +298,7 @@ int main(int argc, char **argv) {
 		device.getVideo(rgbIn);
 		device.getDepth(depthIn);
 
+    /*
 		if(false) {
 			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
 
@@ -335,6 +336,7 @@ int main(int argc, char **argv) {
 				is_recording = true;
 			}
 		}
+    */
 
 		imshow("rgb", rgb_down);
 
