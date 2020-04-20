@@ -298,45 +298,42 @@ int main(int argc, char **argv) {
 		device.getVideo(rgbIn);
 		device.getDepth(depthIn);
 
-    /*
-		if(false) {
-			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
+		cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
 
-			// Convert mat to tensor
-			tensor = Tensor(tensorflow::DT_FLOAT, shape);
-			Status read_tensor_status = readTensorFromMat(rgb_down, tensor);
-			if (!read_tensor_status.ok()) {
-		 	   LOG(ERROR) << "Mat->Tensor conversion failed: " << read_tensor_status;
-	   	         return -1;
-			}
-
-	 	      	// Run the graph on tensor
-	 	       	outputs.clear();
-	 	       	Status runStatus = session->Run({{inputLayer, tensor}}, outputLayer, {}, &outputs);
-	 	       	if (!runStatus.ok()) {
-	 	           LOG(ERROR) << "Running model failed: " << runStatus;
-	 	           return -1;
-	   	     	}
-
-	    	    	// Extract results from the outputs vector
-			tensorflow::TTypes<float>::Flat scores = outputs[1].flat<float>();
-			//tensorflow::TTypes<float>::Flat classes = outputs[2].flat<float>();
-			//tensorflow::TTypes<float>::Flat numDetections = outputs[3].flat<float>();
-			tensorflow::TTypes<float, 3>::Tensor boxes = outputs[0].flat_outer_dims<float,3>();
-
-			vector<size_t> goodIdxs = filterBoxes(scores, boxes, thresholdIOU, thresholdScore);
-
-			// Draw boxes and captions
-			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
-	 		// LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
-			// LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
-			bool expected = false;
-			detect(session2, rgb_down, scores, boxes, goodIdxs, &expected);
-			if(expected && !is_recording){
-				is_recording = true;
-			}
+		// Convert mat to tensor
+		tensor = Tensor(tensorflow::DT_FLOAT, shape);
+		Status read_tensor_status = readTensorFromMat(rgb_down, tensor);
+		if (!read_tensor_status.ok()) {
+	 	   LOG(ERROR) << "Mat->Tensor conversion failed: " << read_tensor_status;
+   	         return -1;
 		}
-    */
+
+ 	      	// Run the graph on tensor
+ 	       	outputs.clear();
+ 	       	Status runStatus = session->Run({{inputLayer, tensor}}, outputLayer, {}, &outputs);
+ 	       	if (!runStatus.ok()) {
+ 	           LOG(ERROR) << "Running model failed: " << runStatus;
+ 	           return -1;
+   	     	}
+
+    	    	// Extract results from the outputs vector
+		tensorflow::TTypes<float>::Flat scores = outputs[1].flat<float>();
+		//tensorflow::TTypes<float>::Flat classes = outputs[2].flat<float>();
+		//tensorflow::TTypes<float>::Flat numDetections = outputs[3].flat<float>();
+		tensorflow::TTypes<float, 3>::Tensor boxes = outputs[0].flat_outer_dims<float,3>();
+
+		vector<size_t> goodIdxs = filterBoxes(scores, boxes, thresholdIOU, thresholdScore);
+
+		// Draw boxes and captions
+		cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
+ 		// LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
+		// LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
+		bool expected = false;
+		detect(session2, rgb_down, scores, boxes, goodIdxs, &expected);
+		if(expected && !is_recording){
+			is_recording = true;
+		}
+
 
 		imshow("rgb", rgb_down);
 
