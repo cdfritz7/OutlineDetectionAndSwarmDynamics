@@ -99,7 +99,7 @@ public:
   bool remove_text(string text);
   float to_opengl_world_x(int x);
   float to_opengl_world_y(int y);
-  void update_display();
+  bool update_display(bool start_recording);
   void cleanup();
   bool should_close();
 	void generate();

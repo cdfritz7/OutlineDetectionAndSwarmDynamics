@@ -27,6 +27,8 @@ using namespace std;
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <wchar.h>
 #include "common/shader.hpp"
 #include "common/texture.hpp"
@@ -222,7 +224,7 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
   glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
   // black background
-  glClearColor(0.0f, 0.0f, 0.2f, 0.0f);
+  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
   // Enable depth test
   glEnable(GL_DEPTH_TEST);
@@ -337,11 +339,21 @@ int GraphicsModule::update_particles(vector<int> x, vector<int> y, vector<int> s
 /*
 update the window created by the instantiated GraphicsModule
 based on the array of Particles maintained by the GraphicsModule instance
+
+parameter :
+	start_recording => whether or not we should run the command to
+	start saving the video
+
+returns :
+	whether or not the the user can get the qr code
+
 */
-void GraphicsModule::update_display(){
+bool GraphicsModule::update_display(bool start_recording){
+
+	bool ret_val = false;
 
 	if(!is_init)
-		return;
+		return ret_val;
 
   // Clear the screen
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -352,6 +364,7 @@ void GraphicsModule::update_display(){
                 glm::vec3(0,0,0), // and looks at the origin
                 glm::vec3(0,-1,0)  // Head is up (set to 0,-1,0 to look upside-down)
                );
+
 	// Projection matrix : 45� Field of View, screen_ratio, display range (z coords): 0.1 unit <-> 100 units
   glm::mat4 ProjectionMatrix = glm::perspective(glm::radians(45.0f), screen_ratio, .1f, 100.0f);
 
@@ -485,11 +498,11 @@ void GraphicsModule::update_display(){
 		printText2D(texts[i].text.c_str(), texts[i].x, texts[i].y, texts[i].size);
 	}
 
-  // Swap buffers
-  glfwSwapBuffers(window);
+	// Swap buffers
+	glfwSwapBuffers(window);
 
 	//video recording
-	if((glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) && !record) {
+	if(start_recording && !record) {
 		record = true;
 		frame_count = 0;
 
@@ -497,7 +510,6 @@ void GraphicsModule::update_display(){
 		ffmpeg = popen(cmd.c_str(), "w");
 		if(ffmpeg == NULL) {
 			fprintf(stderr, "Could not open video file");
-			return;
 		}
 
 	} else if (record == true) {//only save even frames?
@@ -513,18 +525,24 @@ void GraphicsModule::update_display(){
 		}
 	}
 
+	//if we are finished recording, upload video to google drive
 	if(frame_count >= frame_total) {
 		frame_count = 0;
 		record = false;
 		pclose(ffmpeg);
+
 		char temp[255];
 		getcwd(temp, sizeof(temp));
 		std::string command = "sudo python " + std::string(temp) + "/graphics/generateQR.py &";
+		cout<<"next";
 		cout << command << endl;
 		system(command.c_str());
+
+		ret_val = true;
 	}
 
   glfwPollEvents();
+	return ret_val;
 }
 
 /*
@@ -633,8 +651,8 @@ void GraphicsModule::render_qr(){
 */
 void GraphicsModule::update_qr(bool enabled, const char* qrcode_fp, int x, int y, int size){
 	qr_was_enabled = true;
+	QRTexture = loadPNG(qrcode_fp);
 	if(enabled && !qr_enabled){
-		QRTexture = loadPNG(qrcode_fp);
 		qr_x = to_opengl_world_x(x);
 		qr_y = to_opengl_world_y(y);
 		qr_size = size;
