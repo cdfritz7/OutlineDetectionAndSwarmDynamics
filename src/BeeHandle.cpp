@@ -45,19 +45,19 @@ static void resort_points() {
 	//Uses bubble sort bc we expect the vector to be almost sorted
 	for(int i=0; i<point_by_x.size(); i++) {
 		for(int j=1; j<point_by_x.size()-i; j++) {
-			if(point_by_x.get(j-1).second > point_by_x.get(j).second) {
-				pair<int,int> tmp = point_by_x.get(j);
-				point_by_x.get(j) = point_by_x.get(j-1);
-				point_by_x.get(j-1) = tmp;
+			if(point_by_x.at(j-1).second > point_by_x.at(j).second) {
+				pair<int,int> tmp = point_by_x.at(j);
+				point_by_x.at(j) = point_by_x.atget(j-1);
+				point_by_x.at(j-1) = tmp;
 			}
 		}
 	}
 	for(int i=0; i<point_by_y.size(); i++) {
 		for(int j=1; j<point_by_y.size()-i; j++) {
-			if(point_by_y.get(j-1).second > point_by_y.get(j).second) {
-				pair<int,int> tmp = point_by_y.get(j);
-				point_by_y.get(j) = point_by_y.get(j-1);
-				point_by_y.get(j-1) = tmp;
+			if(point_by_y.at(j-1).second > point_by_y.at(j).second) {
+				pair<int,int> tmp = point_by_y.at(j);
+				point_by_y.at(j) = point_by_y.at(j-1);
+				point_by_y.at(j-1) = tmp;
 			}
 		}
 	}
@@ -84,7 +84,7 @@ static void movePoint(int start_idx, int end_idx, int randomFactor, int stepSize
 				int range = 5; // the number of bees to "look" to the left and right/ up and down
 				int x_idx;
 				for(int i=0; i<point_by_x.size(); i++) {
-					if(point_by_x.get(i).first == P_idx) {
+					if(point_by_x.at(i).first == P_idx) {
 						x_idx = i;
 						break;
 					}
@@ -92,13 +92,13 @@ static void movePoint(int start_idx, int end_idx, int randomFactor, int stepSize
 				vector<int> x_neighbors = vector<int>();
 				for(int i=x_idx-range; i<=x_idx+range; i++) {
 					if(i!=x_idx && i>=0 && i<point_by_x.size()) {
-						x_neighbors.push_back(point_by_x.get(i).first)
+						x_neighbors.push_back(point_by_x.at(i).first)
 					}
 				}
 
 				int y_idx;
 				for(int i=0; i<point_by_y.size(); i++) {
-					if(point_by_y.get(i).first == P_idx) {
+					if(point_by_y.at(i).first == P_idx) {
 						y_idx = i;
 						break;
 					}
@@ -106,15 +106,15 @@ static void movePoint(int start_idx, int end_idx, int randomFactor, int stepSize
 				vector<int> y_neighbors = vector<int>();
 				for(int i=y_idx-range; i<=y_idx+range; i++) {
 					if(i!=x_idy && i>=0 && i<point_by_y.size()) {
-						y_neighbors.push_back(point_by_y.get(i).first);
+						y_neighbors.push_back(point_by_y.at(i).first);
 					}
 				}
 
 				vector<int> neighbors = vector<int>();
 				for(int x=0; x<x_neighbors.size(); x++) {
 					for(int y=0; y<y_neighbors.size(); y++) {
-						if(x_neighbors.get(x) == y_neighbors.get(y))
-							neighbors.push_back(x_neighbors.get(x));
+						if(x_neighbors.at(x) == y_neighbors.at(y))
+							neighbors.push_back(x_neighbors.at(x));
 					}
 				}
 
@@ -126,8 +126,8 @@ static void movePoint(int start_idx, int end_idx, int randomFactor, int stepSize
 				// New position is basically a vector sum where magnitude of each summand is the inverse of the distance
 				// Each summand is a vector pointing the current particle directly away from the one in consideration
 				for(int i=0; i<neighbors.size(); i++) {
-					float x_diff = staticPoints[P_idx].x - staticPoints[neighbors.get(i)].x;
-					float y_diff = staticPoints[P_idx].y - staticPoints[neighbors.get(i)].y;
+					float x_diff = staticPoints[P_idx].x - staticPoints[neighbors.at(i)].x;
+					float y_diff = staticPoints[P_idx].y - staticPoints[neighbors.at(i)].y;
 					dist = sqrt(x_diff*x_diff+y_diff*y_diff)
 					new_x += (stepSize)*(x_diff/dist);
 					new_y += (stepSize)*(x_diff/dist);
@@ -265,19 +265,19 @@ void BeeHandle::updatePoints() {
 
 	if(points.size() > point_by_x.size()) {
 		for(int i=0; i<points.size(); i++)
-			point_by_x.push_back(pair<int,int>(i, points.get(i).x));
+			point_by_x.push_back(pair<int,int>(i, points.at(i).x));
 	}
 	else {
 		for(int i=0; i<point_by_x.size(); i++)
-			point_by_x.at(i) = pair<int,int>(point_by_x.at(i).first, points.get(point_by_x.at(i).first).x);
+			point_by_x.at(i) = pair<int,int>(point_by_x.at(i).first, points.at(point_by_x.at(i).first).x);
 	}
 	if(points.size() > point_by_y.size()) {
 		for(int i=0; i<points.size(); i++)
-			point_by_y.push_back(pair<int,int>(i, points.get(i).y));
+			point_by_y.push_back(pair<int,int>(i, points.at(i).y));
 	}
 	else {
-		for(int i=0; i<point_by_xysize(); i++)
-			point_by_y.at(i) = pair<int,int>(point_by_y.at(i).first, points.get(point_by_y.at(i).first).y);
+		for(int i=0; i<point_by_y.size(); i++)
+			point_by_y.at(i) = pair<int,int>(point_by_y.at(i).first, points.at(point_by_y.at(i).first).y);
 	}
 
 	resort_points();
