@@ -1,8 +1,11 @@
 #include "BeeHandle.h"
 #include <iostream>
 #include <thread>
+#include <utility>
+#include <math.h>
 
 using namespace std;
+
 
 float RandomFloat(float a, float b)
 {
@@ -35,6 +38,30 @@ int rads2Dir(float rads){
 static vector<vector<Attractor>> attractorMatrix;
 static vector<vector<cv::Point>> attractorHistory;
 static vector<cv::Point> staticPoints;
+static vector<pair<int,int>> point_by_x;
+static vector<pair<int,int>> point_by_y;
+
+static void resort_points() {
+	//Uses bubble sort bc we expect the vector to be almost sorted
+	for(int i=0; i<point_by_x.size(); i++) {
+		for(int j=1; j<point_by_x.size()-i; j++) {
+			if(point_by_x.get(j-1).second > point_by_x.get(j).second) {
+				pair<int,int> tmp = point_by_x.get(j);
+				point_by_x.get(j) = point_by_x.get(j-1);
+				point_by_x.get(j-1) = tmp;
+			}
+		}
+	}
+	for(int i=0; i<point_by_y.size(); i++) {
+		for(int j=1; j<point_by_y.size()-i; j++) {
+			if(point_by_y.get(j-1).second > point_by_y.get(j).second) {
+				pair<int,int> tmp = point_by_y.get(j);
+				point_by_y.get(j) = point_by_y.get(j-1);
+				point_by_y.get(j-1) = tmp;
+			}
+		}
+	}
+}
 
 static void UpdateAttractorMatrix(int start_idx, int end_idx, int avgPercent, int storedFrames) {
 	for (int P_idx = start_idx; P_idx < end_idx; P_idx++) {
@@ -54,34 +81,63 @@ static void UpdateAttractorMatrix(int start_idx, int end_idx, int avgPercent, in
 static void movePoint(int start_idx, int end_idx, int randomFactor, int stepSize, int xWidth, int yWidth) {
 	for (int P_idx = start_idx; P_idx < end_idx; P_idx++) {
 		if (attractorMatrix[staticPoints[P_idx].x][staticPoints[P_idx].y].pointIdx != P_idx) {
-			float dist_x, dist_y;
-
-			//move randomly
-			dist_x = RandomFloat(-PI, PI);
-			dist_y = RandomFloat(-PI, PI);
-
-			float rads = atan2(dist_y, dist_x) + RandomFloat(-1 * randomFactor, randomFactor);
-
-			int new_x, new_y;
-
-			if (!(dist_x == 0 && dist_y == 0)) {
-				new_x = staticPoints[P_idx].x + int(cos(rads) * stepSize);
-				new_y = staticPoints[P_idx].y + int(sin(rads) * stepSize);
-
-				if (new_x < 0 || new_x > xWidth) {
-					staticPoints[P_idx].x = staticPoints[P_idx].x - int(cos(rads) * stepSize);
+				int range = 5; // the number of bees to "look" to the left and right/ up and down
+				int x_idx;
+				for(int i=0; i<point_by_x.size(); i++) {
+					if(point_by_x.get(i).first == P_idx) {
+						x_idx = i;
+						break;
+					}
 				}
-				else {
-					staticPoints[P_idx].x = new_x;
+				vector<int> x_neighbors = vector<int>();
+				for(int i=x_idx-range; i<=x_idx+range; i++) {
+					if(i!=x_idx && i>=0 && i<point_by_x.size()) {
+						x_neighbors.push_back(point_by_x.get(i).first)
+					}
 				}
 
-				if (new_y < 0 || new_y > yWidth) {
-					staticPoints[P_idx].y = staticPoints[P_idx].y - int(sin(rads) * stepSize);
+				int y_idx;
+				for(int i=0; i<point_by_y.size(); i++) {
+					if(point_by_y.get(i).first == P_idx) {
+						y_idx = i;
+						break;
+					}
 				}
-				else {
-					staticPoints[P_idx].y = new_y;
+				vector<int> y_neighbors = vector<int>();
+				for(int i=y_idx-range; i<=y_idx+range; i++) {
+					if(i!=x_idy && i>=0 && i<point_by_y.size()) {
+						y_neighbors.push_back(point_by_y.get(i).first);
+					}
 				}
-			}
+
+				vector<int> neighbors = vector<int>();
+				for(int x=0; x<x_neighbors.size(); x++) {
+					for(int y=0; y<y_neighbors.size(); y++) {
+						if(x_neighbors.get(x) == y_neighbors.get(y))
+							neighbors.push_back(x_neighbors.get(x));
+					}
+				}
+
+				// int x_diff = 0;
+				// int y_diff = 0;
+				int new_x = staticPoints[P_idx].x;
+				int new_y = staticPoints[P_idx].y;
+
+				// New position is basically a vector sum where magnitude of each summand is the inverse of the distance
+				// Each summand is a vector pointing the current particle directly away from the one in consideration
+				for(int i=0; i<neighbors.size(); i++) {
+					float x_diff = staticPoints[P_idx].x - staticPoints[neighbors.get(i)].x;
+					float y_diff = staticPoints[P_idx].y - staticPoints[neighbors.get(i)].y;
+					dist = sqrt(x_diff*x_diff+y_diff*y_diff)
+					new_x += (stepSize)*(x_diff/dist);
+					new_y += (stepSize)*(x_diff/dist);
+				}
+				if(new_x < 0)
+					new_x = 0;
+				if(new_y < 0)
+					new_y = 0;
+				staticPoints[P_idx].x = new_x % xWidth;
+				staticPoints[P_idx].y = new_y % yWidth;
 		}
 	}
 }
@@ -104,6 +160,8 @@ BeeHandle::BeeHandle(int xwidth, int ywidth, int stepsize, double randomfactor, 
 	avgPercent = avg_percent;
 	storedFrames = stored_frames;
 	attractorMatrix = vector<vector<Attractor>>(xWidth, vector<Attractor>(yWidth, Attractor(0, 0)));
+	point_by_x = vector<pair<int,int>>();
+	point_by_y = vector<pair<int,int>>();
 	soundDivisor = sound_divisor;
 	for (int i = 0; i < attractorMatrix.size(); i++) {
 		for (int j = 0; j < attractorMatrix[0].size(); j++) {
@@ -203,6 +261,26 @@ void BeeHandle::updatePoints() {
 			a = attractorMatrix[x][y];
 		}
 	}
+
+
+	if(points.size() > point_by_x.size()) {
+		for(int i=0; i<points.size(); i++)
+			point_by_x.push_back(pair<int,int>(i, points.get(i).x));
+	}
+	else {
+		for(int i=0; i<point_by_x.size(); i++)
+			point_by_x.at(i) = pair<int,int>(point_by_x.at(i).first, points.get(point_by_x.at(i).first).x);
+	}
+	if(points.size() > point_by_y.size()) {
+		for(int i=0; i<points.size(); i++)
+			point_by_y.push_back(pair<int,int>(i, points.get(i).y));
+	}
+	else {
+		for(int i=0; i<point_by_xysize(); i++)
+			point_by_y.at(i) = pair<int,int>(point_by_y.at(i).first, points.get(point_by_y.at(i).first).y);
+	}
+
+	resort_points();
 
 	for (int i = 0; i < this->numThreads; i++) {
 		int start;
