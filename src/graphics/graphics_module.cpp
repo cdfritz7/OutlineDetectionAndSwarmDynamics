@@ -22,7 +22,6 @@ using namespace std;
 
 #include <string.h>
 #include <errno.h>
-#include <curses.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -36,6 +35,49 @@ using namespace std;
 #include "common/text2D.hpp"
 #include "graphics_module.hpp"
 #include "qrencode.h"
+
+//qr code stuff
+#define OUT_FILE					"./test.bmp"								// Output file name
+#define OUT_FILE_PIXEL_PRESCALER	8											// Prescaler (number of pixels in bmp file for each QRCode pixel, on each dimension)
+
+#define PIXEL_COLOR_R				0											// Color of bmp pixels
+#define PIXEL_COLOR_G				0
+#define PIXEL_COLOR_B				0xff
+#define fopen_s(pFile,filename,mode) ((*(pFile))=fopen((filename),  (mode)))==NULL
+
+typedef unsigned short	WORD;
+typedef unsigned long	DWORD;
+typedef signed long		LONG;
+
+#define BI_RGB			0L
+
+#pragma pack(push, 2)
+
+typedef struct
+	{
+	WORD    bfType;
+	DWORD   bfSize;
+	WORD    bfReserved1;
+	WORD    bfReserved2;
+	DWORD   bfOffBits;
+	} BITMAPFILEHEADER;
+
+typedef struct
+	{
+	DWORD      biSize;
+	LONG       biWidth;
+	LONG       biHeight;
+	WORD       biPlanes;
+	WORD       biBitCount;
+	DWORD      biCompression;
+	DWORD      biSizeImage;
+	LONG       biXPelsPerMeter;
+	LONG       biYPelsPerMeter;
+	DWORD      biClrUsed;
+	DWORD      biClrImportant;
+	} BITMAPINFOHEADER;
+
+#pragma pack(pop)
 
 //qr code stuff
 #define OUT_FILE					"./test.bmp"								// Output file name
@@ -653,6 +695,121 @@ void GraphicsModule::update_qr(bool enabled, const char* qrcode_fp, int x, int y
 	qr_was_enabled = true;
 	QRTexture = loadPNG(qrcode_fp);
 	if(enabled && !qr_enabled){
+		qr_x = to_opengl_world_x(x);
+		qr_y = to_opengl_world_y(y);
+		qr_size = size;
+	}
+	qr_enabled = enabled;
+}
+
+/*
+	adds a text struct to the class member vector<Text> texts
+	this will cause the text to be rendered at the next call to update_display()
+*/
+void GraphicsModule::add_text(string text, int x, int y, float size){
+	Text new_text;
+	new_text.text = text;
+	new_text.x = to_opengl_world_x(x);
+	new_text.y = to_opengl_world_y(y);
+	new_text.size = size;
+
+	texts.push_back(new_text);
+}
+
+/*
+	removes a text struct from our vector of texts, return false if the text is
+	not found. Will cause the text to be removed at the next call to update_display()
+*/
+bool GraphicsModule::remove_text(string text){
+	bool was_found = false;
+
+	for(unsigned i = 0; i < texts.size(); i++){
+		if(texts[i].text.compare(text) == 0){
+			texts.erase(texts.begin() + i);
+			was_found = true;
+		}
+	}
+
+	return was_found;
+}
+
+/*
+	initializes the values needed to render a QR code, called in
+	GraphicsModule constructor
+
+	input -> module_dir : the location of the graphics module wrt the calling
+		                    program, should end with a '/'
+*/
+void GraphicsModule::init_qr(string module_dir){
+
+	//load our shaders for the qr code
+	QRProgramID = LoadShaders ( (module_dir+"shaders/QR.vertexshader").c_str(),
+	                            (module_dir+"shaders/QR.fragmentshader").c_str() );
+
+	//get handlers for variables that we will pass into our vertex shaders
+	QRCameraRight_worldspace_ID  = glGetUniformLocation(QRProgramID, "CameraRight_worldspace");
+  QRCameraUp_worldspace_ID  = glGetUniformLocation(QRProgramID, "CameraUp_worldspace");
+	QRViewProjMatrixID = glGetUniformLocation(QRProgramID, "VP");
+	QRPosID = glGetUniformLocation(QRProgramID, "QRPos");
+	QRSizeID = glGetUniformLocation(QRProgramID, "QRSize");
+
+	//create texture sampler for QR code
+	QRTextureID  = glGetUniformLocation(QRProgramID, "myTextureSampler");
+
+	//VBO containing 4 vertices for the qr code
+	const static GLfloat g_vertex_buffer_data[] = {
+		-0.5f, -0.5f, 0.0f,
+		 0.5f, -0.5f, 0.0f,
+		-0.5f,  0.5f, 0.0f,
+		 0.5f,  0.5f, 0.0f,
+	};
+	glGenBuffers(1, &qr_vertex_buffer);
+	glBindBuffer(GL_ARRAY_BUFFER, qr_vertex_buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_DYNAMIC_DRAW);
+}
+
+/*
+	renders the QR code using the QR texture that was uploaded during updateQR
+	updateQR must be called before this function
+*/
+void GraphicsModule::render_qr(){
+	if(!qr_enabled)
+		return;
+
+	glDisable(GL_BLEND);
+
+	glUseProgram(QRProgramID);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, QRTexture);
+	glUniform1i(QRTextureID, 0);
+
+	glUniform3f(QRCameraRight_worldspace_ID, ViewMatrix[0][0], ViewMatrix[1][0], ViewMatrix[2][0]);
+	glUniform3f(QRCameraUp_worldspace_ID, ViewMatrix[0][1], ViewMatrix[1][1], ViewMatrix[2][1]);
+
+	glUniform3f(QRPosID, (float)qr_x, (float)qr_y, 1.0f);
+	glUniform2f(QRSizeID, (float)qr_size, (float)qr_size);
+
+	glUniformMatrix4fv(QRViewProjMatrixID, 1, GL_FALSE, &ViewProjectionMatrix[0][0]);
+
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, qr_vertex_buffer);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0 );
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glDisableVertexAttribArray(0);
+}
+
+/*
+	adds a qr code found at qrcode_fp to the bottom right of the screen,
+	rendered on the next call to update_display
+
+	enabled : whether the png should be displayed or not
+	qrcode_fp : must contain filename of a png if enabled is set to true
+*/
+void GraphicsModule::update_qr(bool enabled, const char* qrcode_fp, int x, int y, int size){
+	qr_was_enabled = true;
+	if(enabled && !qr_enabled){
+		QRTexture = loadPNG(qrcode_fp);
 		qr_x = to_opengl_world_x(x);
 		qr_y = to_opengl_world_y(y);
 		qr_size = size;

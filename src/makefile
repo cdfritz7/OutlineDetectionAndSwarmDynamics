@@ -5,6 +5,7 @@ LIBS = `pkg-config --libs opencv`
 INCLUDE = -Wl,-rpath='$ORIGIN/lib' -Iinclude -Llib -I/usr/include/libusb-1.0/ -I/usr/local/include/opencv4/opencv2/ -I/usr/local/include/eigen3/ -I/usr/local/include/google/protobuf/ -I/usr/local/include/tf/third-party/ -I/usr/local/include/tf/tensorflow/ -I/usr/local/include/tf/bazel-genfiles/ -I/usr/local/include/tf/ -I/usr/local/lib/
 FREE_LIBS = -lfreenect -lpthread -lglfw3 -lGLEW -lGL -lm -lXrandr -lXi -lX11 -ldl -lXxf86vm -lpthread -lopenal -lalut
 
+
 GRAPHICS_CFLAGS = -fPIC -g -Wall
 GRAPHICS_LIBS = -lglfw3 -lGLEW -lGL -lm -lXrandr -lXi -lX11 -ldl -lXxf86vm -lpthread
 

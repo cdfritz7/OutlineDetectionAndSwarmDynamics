@@ -101,7 +101,8 @@ int main(int argc, char **argv) {
 	int num_bees = 1200; //number of bees
   	int bee_total = 0; //time spent on bee module
 	bool time_it = false; //whether we use timing or not
-  	int sound_divisor = 20; //parameter for audiohandler
+  int sound_divisor = 20; //parameter for audiohandler
+  int randgen = 1;
 
   	//set variables for timing
 	chrono::time_point<std::chrono::high_resolution_clock> time_start;
@@ -165,9 +166,9 @@ int main(int argc, char **argv) {
 
 	//BeeHandle bee_handle = BeeHandle(down_width, down_height);
 	//bee_handle.add_bees(num_bees);
-	int num_sound_bees = num_bees/sound_divisor;
 
-	AudioHandler audio = AudioHandler((int)num_sound_bees);
+	AudioHandler audio = AudioHandler(down_width, down_height);
+  audio.play_sound(32);
 
 	//seed our random number generator
 	RNG rng(1235);
@@ -265,6 +266,7 @@ int main(int argc, char **argv) {
 
   // 0 - 7 starting north going clockwise
 	vector<int> bee_dir (num_bees);
+  vector<int> bee_landed;
 
   cv::namedWindow("rgb", cv::WINDOW_AUTOSIZE);
   //cv::waitKey(0);
@@ -432,6 +434,33 @@ int main(int argc, char **argv) {
     //combined.insert(combined.end(), bh_points.begin(), bh_points.end());
     //bee_positions = combined;
     bee_dir = bee_handle.get_dirs();
+    bee_landed = bee_handle.get_landed();
+    for(int i = 0; i < num_bees/sound_divisor; i++){
+      if(bee_landed[i] == 1){
+        if(bee_positions[i].x < down_width/2 && bee_positions[i].y < down_height/2){
+          randgen = rand() % 8;
+          audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
+          audio.play_sound(randgen);
+        }
+        if(bee_positions[i].x < down_width/2 && bee_positions[i].y >= down_height/2){
+          randgen = rand() % 8 + 8;
+          audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
+          audio.play_sound(randgen);
+        }
+        if(bee_positions[i].x >= down_width/2 && bee_positions[i].y < down_height/2){
+          randgen = rand() % 8 + 16;
+          audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
+          audio.play_sound(randgen);
+        }
+        if(bee_positions[i].x >= down_width/2 && bee_positions[i].y >= down_height/2){
+          randgen = rand() % 8 + 24;
+          audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
+          audio.play_sound(randgen);
+        }
+      }
+
+    }
+
 
 		//update our graphics module
 		for(int i = 0; i < num_bees; i++){
@@ -460,13 +489,6 @@ int main(int argc, char **argv) {
 			}
 		}
 
-
-		landed = bee_handle.get_landed();
-		for(unsigned i = 0; i < landed.size(); i++){
-			if(landed.at(i) == 1){
-				audio.play_sound(i);
-			}
-		}
 
 		//end timer for bees if timing is enabled
 		if(time_it){
