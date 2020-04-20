@@ -141,7 +141,9 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
 															 float beeSize,
 															 const char* texture_fp,
 															 const char* module_dir){
-
+	
+	pixelsX = screenScale*maxX;
+	pixelsY = screenScale*maxY;
 	//variables for qr, recording and text
 	qr_enabled = false;
 	record = false;
@@ -163,8 +165,8 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
 	}
 
   min_x = -max_x; min_y = -max_y;
-	std::string width = std::to_string((int)(max_x*200));
-	std::string height = std::to_string((int)(max_y*300));
+	std::string width = std::to_string((int)(pixelsX));
+	std::string height = std::to_string((int)(pixelsY));
 	//std::string cmd = "sudo avconv -y -f rawvideo -s "+width+"x"+height+" -pix_fmt rgb24 -r 25 -i - -vf vflip -an -b:v 1000k test.mp4";
 	//fprintf(stderr, cmd.c_str());
 	cmd = "sudo ffmpeg -r 25 -f rawvideo -pix_fmt rgb24 -s "+width+"x"+height+" -i - "
@@ -184,14 +186,14 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
   }
 
   glfwWindowHint(GLFW_SAMPLES, 4);
-  glfwWindowHint(GLFW_RESIZABLE,GL_FALSE);
+  glfwWindowHint(GLFW_RESIZABLE,GL_TRUE);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   // Open a window and create its OpenGL context
-  window = glfwCreateWindow( maxX*screen_scale, maxY*screen_scale, "", NULL, NULL);
+  window = glfwCreateWindow(pixelsX, pixelsY, "", NULL, NULL);
 	//window = glfwCreateWindow( 1024, 1024, "", NULL, NULL);
 
   if( window == NULL ){
@@ -500,7 +502,8 @@ bool GraphicsModule::update_display(bool start_recording){
 	glfwSwapBuffers(window);
 
 	//video recording
-	if(start_recording && !record) {
+	//if(start_recording && !record) {
+	if(!(glfwGetKey(window, GLFW_KEY_R ) != GLFW_PRESS )  && !record){
 		record = true;
 		frame_count = 0;
 
@@ -512,13 +515,13 @@ bool GraphicsModule::update_display(bool start_recording){
 
 	} else if (record == true) {//only save even frames?
 		frame_count++;
-
+		
 		if(frame_count%2 == 0){
-			void *pixels = malloc((int)((max_x*200)*(max_y*300)*3));
-			glReadPixels(0, 0, (int)(max_x*200), (int)(max_y*300), GL_RGB, GL_UNSIGNED_BYTE, pixels);
+			void *pixels = malloc(pixelsX*pixelsY*3);
+			glReadPixels(0, 0, (int)(pixelsX), (int)(pixelsY), GL_RGB, GL_UNSIGNED_BYTE, pixels);
 
 			if (ffmpeg)
-	    	fwrite(pixels, (int)(max_x*200*max_y*300*3), 1, ffmpeg);
+	    	fwrite(pixels, (int)(pixelsX*pixelsY*3), 1, ffmpeg);
 			free(pixels);
 		}
 	}

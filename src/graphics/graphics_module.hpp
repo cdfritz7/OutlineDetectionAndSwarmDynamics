@@ -38,6 +38,8 @@ private:
   float max_y;
   float min_x;
   float min_y;
+  int pixelsX;
+  int pixelsY;
   float scale;
   float screen_ratio;
   float screen_scale;

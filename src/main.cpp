@@ -115,7 +115,6 @@ int main(int argc, char **argv) {
 	chrono::system_clock::time_point limiter_end = chrono::system_clock::now();
 
 	//variables for video recording
-	bool is_recording = true;
 	bool display_qr = false;
 	chrono::system_clock::time_point qr_start;
 	chrono::system_clock::time_point qr_current;
@@ -297,43 +296,44 @@ int main(int argc, char **argv) {
 		//get one frame of video and one frame of depth from the kinect
 		device.getVideo(rgbIn);
 		device.getDepth(depthIn);
+		
+		//gesture detection
+		/*
+		if(iterations%15==0) {
+			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
 
-		cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
+			// Convert mat to tensor
+			tensor = Tensor(tensorflow::DT_FLOAT, shape);
+			Status read_tensor_status = readTensorFromMat(rgb_down, tensor);
+			if (!read_tensor_status.ok()) {
+		 	   LOG(ERROR) << "Mat->Tensor conversion failed: " << read_tensor_status;
+	   	         return -1;
+			}
 
-		// Convert mat to tensor
-		tensor = Tensor(tensorflow::DT_FLOAT, shape);
-		Status read_tensor_status = readTensorFromMat(rgb_down, tensor);
-		if (!read_tensor_status.ok()) {
-	 	   LOG(ERROR) << "Mat->Tensor conversion failed: " << read_tensor_status;
-   	         return -1;
+	 	      	// Run the graph on tensor
+	 	       	outputs.clear();
+	 	       	Status runStatus = session->Run({{inputLayer, tensor}}, outputLayer, {}, &outputs);
+	 	       	if (!runStatus.ok()) {
+	 	           LOG(ERROR) << "Running model failed: " << runStatus;
+	 	           return -1;
+	   	     	}
+
+	    	    	// Extract results from the outputs vector
+			tensorflow::TTypes<float>::Flat scores = outputs[1].flat<float>();
+			//tensorflow::TTypes<float>::Flat classes = outputs[2].flat<float>();
+			//tensorflow::TTypes<float>::Flat numDetections = outputs[3].flat<float>();
+			tensorflow::TTypes<float, 3>::Tensor boxes = outputs[0].flat_outer_dims<float,3>();
+
+			vector<size_t> goodIdxs = filterBoxes(scores, boxes, thresholdIOU, thresholdScore);
+
+			// Draw boxes and captions
+			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
+	 		// LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
+			// LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
+			bool expected = false;
+			detect(session2, rgb_down, scores, boxes, goodIdxs, &expected);
 		}
-
- 	      	// Run the graph on tensor
- 	       	outputs.clear();
- 	       	Status runStatus = session->Run({{inputLayer, tensor}}, outputLayer, {}, &outputs);
- 	       	if (!runStatus.ok()) {
- 	           LOG(ERROR) << "Running model failed: " << runStatus;
- 	           return -1;
-   	     	}
-
-    	    	// Extract results from the outputs vector
-		tensorflow::TTypes<float>::Flat scores = outputs[1].flat<float>();
-		//tensorflow::TTypes<float>::Flat classes = outputs[2].flat<float>();
-		//tensorflow::TTypes<float>::Flat numDetections = outputs[3].flat<float>();
-		tensorflow::TTypes<float, 3>::Tensor boxes = outputs[0].flat_outer_dims<float,3>();
-
-		vector<size_t> goodIdxs = filterBoxes(scores, boxes, thresholdIOU, thresholdScore);
-
-		// Draw boxes and captions
-		cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
- 		// LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
-		// LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
-		bool expected = false;
-		detect(session2, rgb_down, scores, boxes, goodIdxs, &expected);
-		if(expected && !is_recording){
-			is_recording = true;
-		}
-
+		*/
 
 		imshow("rgb", rgb_down);
 
@@ -469,23 +469,20 @@ int main(int argc, char **argv) {
 			//bee_dir[i] = (bee_dir[i]+1)%8;
 		}
 		gm.update_particles(bee_x, bee_y, bee_stage, bee_dir);
-		display_qr = gm.update_display(is_recording) || display_qr;
+		display_qr = gm.update_display(true) || display_qr;
 
 		//updates for qr code
 		if(display_qr){
-			if(!is_recording){
-				qr_current = chrono::system_clock::now();
-				chrono::duration<double, std::milli> qr_time = qr_current - qr_start;
-	    	gm.update_qr(true, "./graphics/video.png", (int)down_width/10, (int)down_height/10, 5.0f);
-        if(qr_time.count() >= 17000.0){ //delete qr code
-          display_qr = false;
-					system("sudo rm ./graphics/video.png");
-          gm.update_qr(false, "", 320, 240, 2.0f);
-				}
-			}else{
-        is_recording = false;
-				qr_start = chrono::system_clock::now();
+			qr_current = chrono::system_clock::now();
+			chrono::duration<double, std::milli> qr_time = qr_current - qr_start;
+	    		gm.update_qr(true, "./graphics/video.png", (int)down_width/10, (int)down_height/10, 5.0f);
+        		if(qr_time.count() >= 20000.0){ //delete qr code
+         			display_qr = false;
+				system("sudo rm ./graphics/video.png");
+          			gm.update_qr(false, "", 320, 240, 2.0f);
 			}
+		}else{
+			qr_start = chrono::system_clock::now();
 		}
 
 
