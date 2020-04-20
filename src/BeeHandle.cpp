@@ -47,7 +47,7 @@ static void resort_points() {
 		for(int j=1; j<point_by_x.size()-i; j++) {
 			if(point_by_x.at(j-1).second > point_by_x.at(j).second) {
 				pair<int,int> tmp = point_by_x.at(j);
-				point_by_x.at(j) = point_by_x.atget(j-1);
+				point_by_x.at(j) = point_by_x.at(j-1);
 				point_by_x.at(j-1) = tmp;
 			}
 		}
@@ -92,7 +92,7 @@ static void movePoint(int start_idx, int end_idx, int randomFactor, int stepSize
 				vector<int> x_neighbors = vector<int>();
 				for(int i=x_idx-range; i<=x_idx+range; i++) {
 					if(i!=x_idx && i>=0 && i<point_by_x.size()) {
-						x_neighbors.push_back(point_by_x.at(i).first)
+						x_neighbors.push_back(point_by_x.at(i).first);
 					}
 				}
 
@@ -105,7 +105,7 @@ static void movePoint(int start_idx, int end_idx, int randomFactor, int stepSize
 				}
 				vector<int> y_neighbors = vector<int>();
 				for(int i=y_idx-range; i<=y_idx+range; i++) {
-					if(i!=x_idy && i>=0 && i<point_by_y.size()) {
+					if(i!=y_idx && i>=0 && i<point_by_y.size()) {
 						y_neighbors.push_back(point_by_y.at(i).first);
 					}
 				}
@@ -128,7 +128,7 @@ static void movePoint(int start_idx, int end_idx, int randomFactor, int stepSize
 				for(int i=0; i<neighbors.size(); i++) {
 					float x_diff = staticPoints[P_idx].x - staticPoints[neighbors.at(i)].x;
 					float y_diff = staticPoints[P_idx].y - staticPoints[neighbors.at(i)].y;
-					dist = sqrt(x_diff*x_diff+y_diff*y_diff)
+					float dist = sqrt(x_diff*x_diff+y_diff*y_diff);
 					new_x += (stepSize)*(x_diff/dist);
 					new_y += (stepSize)*(x_diff/dist);
 				}
