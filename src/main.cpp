@@ -436,21 +436,29 @@ int main(int argc, char **argv) {
     bee_landed = bee_handle.get_landed();
     for(int i = 0; i < num_bees/sound_divisor; i++){
       if(bee_landed[i] == 1){
+
+	//sounds same as below
         if(bee_positions[i].x < down_width/2 && bee_positions[i].y < down_height/2){
           randgen = rand() % 8;
           audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
           audio.play_sound(randgen);
         }
+
+	//sounds like two sounds - bwooiii and dn
         if(bee_positions[i].x < down_width/2 && bee_positions[i].y >= down_height/2){
           randgen = rand() % 8 + 8;
           audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
           audio.play_sound(randgen);
         }
+
+	//buzzing	
         if(bee_positions[i].x >= down_width/2 && bee_positions[i].y < down_height/2){
           randgen = rand() % 8 + 16;
           audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
           audio.play_sound(randgen);
         }
+
+	//chimes
         if(bee_positions[i].x >= down_width/2 && bee_positions[i].y >= down_height/2){
           randgen = rand() % 8 + 24;
           audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
