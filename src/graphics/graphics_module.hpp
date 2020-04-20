@@ -90,7 +90,7 @@ private:
 public:
   void SortParticles();
   GraphicsModule( int num_particles, int maxX, int maxY,
-                  int screenScale, float beeSize,
+                  float screenScale, float beeSize,
                   const char* texture_fp,
                   const char* module_dir);
   int update_particles(vector<int> x, vector<int> y, vector<int> stage, vector<int> direction);
