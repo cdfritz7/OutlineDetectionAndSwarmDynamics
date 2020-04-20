@@ -81,7 +81,7 @@ static void UpdateAttractorMatrix(int start_idx, int end_idx, int avgPercent, in
 static void movePoint(int start_idx, int end_idx, int randomFactor, int stepSize, int xWidth, int yWidth) {
 	for (int P_idx = start_idx; P_idx < end_idx; P_idx++) {
 		if (attractorMatrix[staticPoints[P_idx].x][staticPoints[P_idx].y].pointIdx != P_idx) {
-				int range = 5; // the number of bees to "look" to the left and right/ up and down
+				/*int range = 5; // the number of bees to "look" to the left and right/ up and down
 				int x_idx;
 				for(int i=0; i<point_by_x.size(); i++) {
 					if(point_by_x.at(i).first == P_idx) {
@@ -137,7 +137,7 @@ static void movePoint(int start_idx, int end_idx, int randomFactor, int stepSize
 				if(new_y < 0)
 					new_y = 0;
 				staticPoints[P_idx].x = new_x % xWidth;
-				staticPoints[P_idx].y = new_y % yWidth;
+				staticPoints[P_idx].y = new_y % yWidth;*/
 		}
 	}
 }
@@ -201,45 +201,105 @@ void BeeHandle::movePoints() {
 			}
 		}
 		else {
-			if(P_idx < points.size()/soundDivisor){
-				landed[P_idx] = 0;
-				sudo_landed[P_idx] = 0;
+			if(false) {
+				if(P_idx < points.size()/soundDivisor){
+					landed[P_idx] = 0;
+					sudo_landed[P_idx] = 0;
+				}
+				int range = 5; // the number of bees to "look" to the left and right/ up and down
+				int x_idx;
+				for(int i=0; i<point_by_x.size(); i++) {
+					if(point_by_x.at(i).first == P_idx) {
+						x_idx = i;
+						break;
+					}
+				}
+				vector<int> x_neighbors = vector<int>();
+				for(int i=x_idx-range; i<=x_idx+range; i++) {
+					if(i!=x_idx && i>=0 && i<point_by_x.size()) {
+						x_neighbors.push_back(point_by_x.at(i).first);
+					}
+				}
+
+				int y_idx;
+				for(int i=0; i<point_by_y.size(); i++) {
+					if(point_by_y.at(i).first == P_idx) {
+						y_idx = i;
+						break;
+					}
+				}
+				vector<int> y_neighbors = vector<int>();
+				for(int i=y_idx-range; i<=y_idx+range; i++) {
+					if(i!=y_idx && i>=0 && i<point_by_y.size()) {
+						y_neighbors.push_back(point_by_y.at(i).first);
+					}
+				}
+
+				vector<int> neighbors = vector<int>();
+				for(int x=0; x<x_neighbors.size(); x++) {
+					for(int y=0; y<y_neighbors.size(); y++) {
+						if(x_neighbors.at(x) == y_neighbors.at(y))
+							neighbors.push_back(x_neighbors.at(x));
+					}
+				}
+
+				// int x_diff = 0;
+				// int y_diff = 0;
+				int new_x = staticPoints[P_idx].x;
+				int new_y = staticPoints[P_idx].y;
+
+				// New position is basically a vector sum where magnitude of each summand is the inverse of the distance
+				// Each summand is a vector pointing the current particle directly away from the one in consideration
+				for(int i=0; i<neighbors.size(); i++) {
+					float x_diff = staticPoints[P_idx].x - staticPoints[neighbors.at(i)].x;
+					float y_diff = staticPoints[P_idx].y - staticPoints[neighbors.at(i)].y;
+					float dist = sqrt(x_diff*x_diff+y_diff*y_diff);
+					new_x += (stepSize)*(x_diff/dist);
+					new_y += (stepSize)*(x_diff/dist);
+				}
+				if(new_x < 0)
+					new_x = 0;
+				if(new_y < 0)
+					new_y = 0;
+				staticPoints[P_idx].x = new_x % xWidth;
+				staticPoints[P_idx].y = new_y % yWidth;
 			}
+			else {
+				float dist_x, dist_y;
 
-			float dist_x, dist_y;
+				//move randomly
+				dist_x = RandomFloat(-PI, PI);
+				dist_y = RandomFloat(-PI, PI);
 
-			//move randomly
-			dist_x = RandomFloat(-PI, PI);
-			dist_y = RandomFloat(-PI, PI);
+				float rads = atan2(dist_y, dist_x) + RandomFloat(-1 * randomFactor, randomFactor);
 
-			float rads = atan2(dist_y, dist_x) + RandomFloat(-1 * randomFactor, randomFactor);
+				int new_x, new_y;
+				float x_change = 0.0;
+				float y_change = 1.0;
 
-			int new_x, new_y;
-			float x_change = 0.0;
-			float y_change = 1.0;
+				if (!(dist_x == 0 && dist_y == 0)) {
+					new_x = points[P_idx].x + int(cos(rads) * stepSize);
+					new_y = points[P_idx].y + int(sin(rads) * stepSize);
 
-			if (!(dist_x == 0 && dist_y == 0)) {
-				new_x = points[P_idx].x + int(cos(rads) * stepSize);
-				new_y = points[P_idx].y + int(sin(rads) * stepSize);
+					if (new_x < 0 || new_x >= xWidth) {
+						points[P_idx].x = points[P_idx].x - int(cos(rads) * stepSize);
+						x_change = -1 * cos(rads);
+					}
+					else {
+						points[P_idx].x = new_x;
+						x_change = cos(rads);
+					}
 
-				if (new_x < 0 || new_x >= xWidth) {
-					points[P_idx].x = points[P_idx].x - int(cos(rads) * stepSize);
-					x_change = -1 * cos(rads);
+					if (new_y < 0 || new_y >= yWidth) {
+						points[P_idx].y = points[P_idx].y - int(sin(rads) * stepSize);
+						y_change = -1 * sin(rads);
+					}
+					else {
+						points[P_idx].y = new_y;
+						y_change = sin(rads);
+					}
+					dirs[P_idx] = rads2Dir(atan2(y_change, x_change));
 				}
-				else {
-					points[P_idx].x = new_x;
-					x_change = cos(rads);
-				}
-
-				if (new_y < 0 || new_y >= yWidth) {
-					points[P_idx].y = points[P_idx].y - int(sin(rads) * stepSize);
-					y_change = -1 * sin(rads);
-				}
-				else {
-					points[P_idx].y = new_y;
-					y_change = sin(rads);
-				}
-				dirs[P_idx] = rads2Dir(atan2(y_change, x_change));
 			}
 		}
 	}
