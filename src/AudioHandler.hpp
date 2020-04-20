@@ -136,12 +136,11 @@ public:
 
 		//load new .wavs
 		for(int i=1;i<=buffnum;i++){
-			int length = snprintf( NULL, 0, "%d", i );
 			string str = to_string(i);
 			string flnm = ".wav";
 			string flhdr = "./sounds/";
 			string file_name = flhdr+str+flnm;
-			alutLoadWAVFile(file_name.c_str(), &format, &data, &size, &freq, (ALboolean*)&loop);
+			alutLoadWAVFile((ALbyte*)file_name.c_str(), &format, &data, &size, &freq, (ALboolean*)&loop);
 			TEST_ERROR("loading wav file");
 
 			alBufferData(buffer[i-1], format, data, size, freq);
