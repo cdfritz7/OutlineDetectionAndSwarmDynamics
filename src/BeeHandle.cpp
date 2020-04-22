@@ -16,6 +16,27 @@ float RandomFloat(float a, float b)
 	return a + r;
 }
 
+// calculates torodial distance
+static float dist(int x1, int y1, int x2, int y2, int xWidth, int yWidth) {
+	int xDiff = abs(x1 - x2);
+	if(xDiff > xWidth/2) {
+		if(x1 > x2)
+			xDiff = x2 + (xWidth-x1);
+		else
+			xDiff = x1 + (xWidth-x2);
+	}
+	int yDiff = abs(y1 - y2);
+	if(yDiff > yWidth/2) {
+		if(y1 > y2)
+			yDiff = y2 + (yWidth-y1);
+		else
+			yDiff = y1 + (yWidth-y2);
+	}
+
+	return sqrt(xDiff*xDiff + yDiff*yDiff);
+
+}
+
 int rads2Dir(float rads){
 	if ((3 * PI/8) > rads && rads >= (PI/8)) {
 		return 1;
@@ -43,7 +64,30 @@ static vector<cv::Point> staticPoints;
 // Screen is divided into a grid of equally-sized rectangular chunks (of parametric number in the x and y dimensions)
 // chunkToPoints maps a chunk to the indexes of points located in that portion of the screen
 static vector<vector<vector<int>>> chunkToPoints;
-static setPointsInChunks = false;
+static bool setPointsInChunks = false;
+
+// get the chunk coords of a given location on the screen
+// useful to be able to go from a bee to it's chunk
+static pair<int, int> screenLocToChunk(int x, int y, int xWidth, int yWidth) {
+	int chunkX = xWidth/chunkToPoints.size();
+	int chunkY = yWidth/chunkToPoints.at(0).size();
+	return make_pair(chunkX, chunkY);
+}
+
+// Get all the points in neighboring chunks (incl. current chunk)
+// Uses torodial bounds -- chunk(0,0) is
+static vector<int> getNeighbors(pair<int, int> chunk) {
+	vector<int> result;
+	for(int i=chunk.first-1; i<=chunk.first+1; i++) {
+		for(int j=chunk.second-1; j<=chunk.second+1; j++) {
+			int x = i%chunkToPoints.size();
+			int y = j%chunkToPoints.at(0).size();
+			vector<int> points = chunkToPoints.at(x).at(y);
+			result.insert(result.end(), points.begin(), points.end());
+		}
+	}
+	return result;
+}
 
 static void UpdateAttractorMatrix(int start_idx, int end_idx, int avgPercent, int storedFrames) {
 	for (int P_idx = start_idx; P_idx < end_idx; P_idx++) {
@@ -127,7 +171,7 @@ BeeHandle::BeeHandle(int xwidth, int ywidth, int stepsize, double randomfactor, 
 		vector<vector<int>> newVec;
 		for(int j=0; j<numYChunks; j++) {
 			vector<int> pointVec;
-			chunkToPoints.push_back(pointVec);
+			newVec.push_back(pointVec);
 		}
 		chunkToPoints.push_back(newVec);
 	}
@@ -153,7 +197,7 @@ void BeeHandle::movePoints() {
 	}
 	if(!setPointsInChunks) {
 		for (int i = 0; i < staticPoints.size(); i++) {
-			pair<int,int> chunk = screenLocToChunk(staticPoints[i].x, staticPoints[i].y);
+			pair<int,int> chunk = screenLocToChunk(staticPoints[i].x, staticPoints[i].y, xWidth, yWidth);
 			chunkToPoints.at(chunk.first).at(chunk.second).push_back(i);
 		}
 		setPointsInChunks = true;
@@ -179,7 +223,7 @@ void BeeHandle::movePoints() {
 			// TODO consider having attractors have some sort of effect here
 			// Does this need to use points and not static points?
 
-			neighbors = getNeighbors(screenLocToChunk(staticPoints[P_idx].x, staticPoints[P_idx].y));
+			vector<int> neighbors = getNeighbors(screenLocToChunk(staticPoints[P_idx].x, staticPoints[P_idx].y, xWidth, yWidth));
 
 			int newX = staticPoints[P_idx].x;
 			int newY = staticPoints[P_idx].y;
@@ -188,27 +232,27 @@ void BeeHandle::movePoints() {
 			// New position is basically a vector sum where magnitude of each summand is the inverse of the distance
 			// Each summand is a vector pointing the current particle directly away from the one in consideration
 			for(int i=0; i<neighbors.size(); i++) {
-				if(staticPoints[neighbors.at(i)] != P_idx) {
+				if(neighbors.at(i) != P_idx) {
 					float xDiff = staticPoints[P_idx].x - staticPoints[neighbors.at(i)].x;
 					float yDiff = staticPoints[P_idx].y - staticPoints[neighbors.at(i)].y;
-					float torodialDist = dist(staticPoints[P_idx].x, staticPoints[neighbors.at(i)].x, staticPoints[P_idx].y, staticPoints[neighbors.at(i)].y);
+					float torodialDist = dist(staticPoints[P_idx].x, staticPoints[neighbors.at(i)].x, staticPoints[P_idx].y, staticPoints[neighbors.at(i)].y, xWidth, yWidth);
 					newX += (stepSize)*(xDiff/torodialDist);
 					newY += (stepSize)*(yDiff/torodialDist);
 				}
 			}
 
-			pair<int,int> oldChunk = screenLocToChunk(staticPoints[P_idx].x, staticPoints[P_idx].y)
+			pair<int,int> oldChunk = screenLocToChunk(staticPoints[P_idx].x, staticPoints[P_idx].y, xWidth, yWidth);
 
 			staticPoints[P_idx].x = newX % xWidth;
 			staticPoints[P_idx].y = newY % yWidth;
 
-			pair<int,int> newChunk = screenLocToChunk(staticPoints[P_idx].x, staticPoints[P_idx].y)
+			pair<int,int> newChunk = screenLocToChunk(staticPoints[P_idx].x, staticPoints[P_idx].y, xWidth, yWidth);
 
 			if(oldChunk.first != newChunk.first || oldChunk.second != newChunk.second) {
 				vector<int> vec = chunkToPoints.at(oldChunk.first).at(oldChunk.second);
 				vec.erase(remove(vec.begin(), vec.end(), P_idx), vec.end());
+				chunkToPoints.at(newChunk.first).at(newChunk.second).push_back(P_idx);
 			}
-			chunkToPoints.at(newChunk.first).at(newChunk.second).push_back(P_idx);
 
 		}
 	}
@@ -399,46 +443,6 @@ void BeeHandle::addAttractorsAvg(vector<cv::Point> new_attractors) {
 	}
 }
 
-// get the chunk coords of a given location on the screen
-// useful to be able to go from a bee to it's chunk
-static pair<int, int> screenLocToChunk(int x, int y) {
-	int chunkX = xWidth/chunkToPoints.size();
-	int chunkY = yWidth/chunkToPoints.at(0).size();
-	return make_pair(chunkX, chunkY);
-}
 
-// Get all the points in neighboring chunks (incl. current chunk)
-// Uses torodial bounds -- chunk(0,0) is
-static vector<int> getNeighbors(pair<int> chunk) {
-	vector<int> result;
-	for(int i=chunk.first-1; i<=chunk.first+1; i++) {
-		for(int j=chunk.second-1; j<=chunk.second+1; j++) {
-			int x = i%chunkToPoints.size();
-			int y = j%chunkToPoints.at(0).size();
-			points = chunkToPoints.at(x).at(y);
-			result.insert(result.end(), points.begin(), points.end());
-		}
-	}
-	return result;
-}
 
-// calculates torodial distance
-static float dist(int x1, int y1, int x2, int y2) {
-	int xDiff = abs(x1 - x2);
-	if(xDiff > xWidth/2) {
-		if(x1 > x2)
-			xDiff = x2 + (xWidth-x1);
-		else
-			xDiff = x1 + (xWidth-x2);
-	}
-	int yDiff = abs(y1 - y2);
-	if(yDiff > yWidth/2) {
-		if(y1 > y2)
-			yDiff = y2 + (yWidth-y1);
-		else
-			yDiff = y1 + (yWidth-y2);
-	}
 
-	return sqrt(xDiff*xDiff + yDiff*yDiff);
-
-}
