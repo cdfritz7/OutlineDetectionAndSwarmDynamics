@@ -1,6 +1,10 @@
 #include "BeeHandle.h"
 #include <iostream>
 #include <thread>
+#include <utility>
+#include <math.h>
+#include <cstdlib>
+#include <algorithm>
 
 using namespace std;
 
@@ -35,6 +39,11 @@ int rads2Dir(float rads){
 static vector<vector<Attractor>> attractorMatrix;
 static vector<vector<cv::Point>> attractorHistory;
 static vector<cv::Point> staticPoints;
+
+// Screen is divided into a grid of equally-sized rectangular chunks (of parametric number in the x and y dimensions)
+// chunkToPoints maps a chunk to the indexes of points located in that portion of the screen
+static vector<vector<vector<int>>> chunkToPoints;
+static setPointsInChunks = false;
 
 static void UpdateAttractorMatrix(int start_idx, int end_idx, int avgPercent, int storedFrames) {
 	for (int P_idx = start_idx; P_idx < end_idx; P_idx++) {
@@ -111,6 +120,18 @@ BeeHandle::BeeHandle(int xwidth, int ywidth, int stepsize, double randomfactor, 
 			attractorMatrix[i][j].y = j;
 		}
 	}
+	// number of rows/columns of chunks
+	int numXChunks = 10;
+	int numYChunks = 10;
+	for(int i=0; i<numXChunks; i++) {
+		vector<vector<int>> newVec;
+		for(int j=0; j<numYChunks; j++) {
+			vector<int> pointVec;
+			chunkToPoints.push_back(pointVec);
+		}
+		chunkToPoints.push_back(newVec);
+	}
+
 	attractorHistory.clear();
 	staticPoints.clear();
 	dirs.clear();
@@ -130,6 +151,13 @@ void BeeHandle::movePoints() {
 			sudo_landed.push_back(0);
 		}
 	}
+	if(!setPointsInChunks) {
+		for (int i = 0; i < staticPoints.size(); i++) {
+			pair<int,int> chunk = screenLocToChunk(staticPoints[i].x, staticPoints[i].y);
+			chunkToPoints.at(chunk.first).at(chunk.second).push_back(i);
+		}
+		setPointsInChunks = true;
+	}
 	for (int P_idx = 0; P_idx < points.size(); P_idx++) {
 		if (attractorMatrix[points[P_idx].x][points[P_idx].y].pointIdx == P_idx){
 			if(P_idx < points.size()/soundDivisor){
@@ -147,42 +175,41 @@ void BeeHandle::movePoints() {
 				landed[P_idx] = 0;
 				sudo_landed[P_idx] = 0;
 			}
+			// Move bee at P_idx
+			// TODO consider having attractors have some sort of effect here
+			// Does this need to use points and not static points?
 
-			float dist_x, dist_y;
+			neighbors = getNeighbors(screenLocToChunk(staticPoints[P_idx].x, staticPoints[P_idx].y));
 
-			//move randomly
-			dist_x = RandomFloat(-PI, PI);
-			dist_y = RandomFloat(-PI, PI);
+			int newX = staticPoints[P_idx].x;
+			int newY = staticPoints[P_idx].y;
 
-			float rads = atan2(dist_y, dist_x) + RandomFloat(-1 * randomFactor, randomFactor);
-
-			int new_x, new_y;
-			float x_change = 0.0;
-			float y_change = 1.0;
-
-			if (!(dist_x == 0 && dist_y == 0)) {
-				new_x = points[P_idx].x + int(cos(rads) * stepSize);
-				new_y = points[P_idx].y + int(sin(rads) * stepSize);
-
-				if (new_x < 0 || new_x >= xWidth) {
-					points[P_idx].x = points[P_idx].x - int(cos(rads) * stepSize);
-					x_change = -1 * cos(rads);
+			// TODO add some randomness
+			// New position is basically a vector sum where magnitude of each summand is the inverse of the distance
+			// Each summand is a vector pointing the current particle directly away from the one in consideration
+			for(int i=0; i<neighbors.size(); i++) {
+				if(staticPoints[neighbors.at(i)] != P_idx) {
+					float xDiff = staticPoints[P_idx].x - staticPoints[neighbors.at(i)].x;
+					float yDiff = staticPoints[P_idx].y - staticPoints[neighbors.at(i)].y;
+					float torodialDist = dist(staticPoints[P_idx].x, staticPoints[neighbors.at(i)].x, staticPoints[P_idx].y, staticPoints[neighbors.at(i)].y);
+					newX += (stepSize)*(xDiff/torodialDist);
+					newY += (stepSize)*(yDiff/torodialDist);
 				}
-				else {
-					points[P_idx].x = new_x;
-					x_change = cos(rads);
-				}
-
-				if (new_y < 0 || new_y >= yWidth) {
-					points[P_idx].y = points[P_idx].y - int(sin(rads) * stepSize);
-					y_change = -1 * sin(rads);
-				}
-				else {
-					points[P_idx].y = new_y;
-					y_change = sin(rads);
-				}
-				dirs[P_idx] = rads2Dir(atan2(y_change, x_change));
 			}
+
+			pair<int,int> oldChunk = screenLocToChunk(staticPoints[P_idx].x, staticPoints[P_idx].y)
+
+			staticPoints[P_idx].x = newX % xWidth;
+			staticPoints[P_idx].y = newY % yWidth;
+
+			pair<int,int> newChunk = screenLocToChunk(staticPoints[P_idx].x, staticPoints[P_idx].y)
+
+			if(oldChunk.first != newChunk.first || oldChunk.second != newChunk.second) {
+				vector<int> vec = chunkToPoints.at(oldChunk.first).at(oldChunk.second);
+				vec.erase(remove(vec.begin(), vec.end(), P_idx), vec.end());
+			}
+			chunkToPoints.at(newChunk.first).at(newChunk.second).push_back(P_idx);
+
 		}
 	}
 }
@@ -370,4 +397,48 @@ void BeeHandle::addAttractorsAvg(vector<cv::Point> new_attractors) {
 		threads.clear();
 		attractorHistory.erase(attractorHistory.begin());
 	}
+}
+
+// get the chunk coords of a given location on the screen
+// useful to be able to go from a bee to it's chunk
+static pair<int, int> screenLocToChunk(int x, int y) {
+	int chunkX = xWidth/chunkToPoints.size();
+	int chunkY = yWidth/chunkToPoints.at(0).size();
+	return make_pair(chunkX, chunkY);
+}
+
+// Get all the points in neighboring chunks (incl. current chunk)
+// Uses torodial bounds -- chunk(0,0) is
+static vector<int> getNeighbors(pair<int> chunk) {
+	vector<int> result;
+	for(int i=chunk.first-1; i<=chunk.first+1; i++) {
+		for(int j=chunk.second-1; j<=chunk.second+1; j++) {
+			int x = i%chunkToPoints.size();
+			int y = j%chunkToPoints.at(0).size();
+			points = chunkToPoints.at(x).at(y);
+			result.insert(result.end(), points.begin(), points.end());
+		}
+	}
+	return result;
+}
+
+// calculates torodial distance
+static float dist(int x1, int y1, int x2, int y2) {
+	int xDiff = abs(x1 - x2);
+	if(xDiff > xWidth/2) {
+		if(x1 > x2)
+			xDiff = x2 + (xWidth-x1);
+		else
+			xDiff = x1 + (xWidth-x2);
+	}
+	int yDiff = abs(y1 - y2);
+	if(yDiff > yWidth/2) {
+		if(y1 > y2)
+			yDiff = y2 + (yWidth-y1);
+		else
+			yDiff = y1 + (yWidth-y2);
+	}
+
+	return sqrt(xDiff*xDiff + yDiff*yDiff);
+
 }
