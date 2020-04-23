@@ -4,6 +4,7 @@ import os
 import pickle
 import qrcode
 import os.path
+import pyqrcode
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -61,7 +62,7 @@ drive_service = build('drive', 'v3', credentials=creds)
 currentDate = generateFileName(False)
 query = "mimeType = 'application/vnd.google-apps.folder' and name='" + currentDate + "'"
 parentFolder = createFolder()
-vidName = generateFileName(True)
+vidName = generateFileName(True) + ".mp4"
 
 fileMetadata = {
     'name': vidName,
@@ -80,4 +81,5 @@ print('Video uploaded: %s' % file.get('id'))
 drive_service.permissions().create(fileId=file.get('id'), body=new_permission).execute()
 
 url = "https://drive.google.com/file/d/" + file.get('id') + "/view?usp=sharing"
-os.system('qr ' + url + '> ./graphics/video.png')
+big_code = pyqrcode.create(str(url), error='L', mode='binary')
+big_code.png('video.png')

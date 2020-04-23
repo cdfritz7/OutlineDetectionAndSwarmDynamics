@@ -137,13 +137,13 @@ params:
 	                   of the constructor
 */
 GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
-	                             int screenScale,
+	                             float screenScale,
 															 float beeSize,
 															 const char* texture_fp,
 															 const char* module_dir){
-	
-	pixelsX = screenScale*maxX;
-	pixelsY = screenScale*maxY;
+
+	pixelsX = (int)screenScale*maxX;
+	pixelsY = (int)screenScale*maxY;
 	//variables for qr, recording and text
 	qr_enabled = false;
 	record = false;
@@ -515,7 +515,7 @@ bool GraphicsModule::update_display(bool start_recording){
 
 	} else if (record == true) {//only save even frames?
 		frame_count++;
-		
+
 		if(frame_count%2 == 0){
 			void *pixels = malloc(pixelsX*pixelsY*3);
 			glReadPixels(0, 0, (int)(pixelsX), (int)(pixelsY), GL_RGB, GL_UNSIGNED_BYTE, pixels);

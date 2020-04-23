@@ -48,7 +48,6 @@ void filter(cv::Mat mat, int threshold){
 	}
 }
 
-//
 //used to test whether a string is an integer -> for arg parsing
 //https://stackoverflow.com/questions/2844817/how-do-i-check-if-a-c-string-is-an-int
 inline bool isInteger(const std::string & s)
@@ -83,28 +82,27 @@ vector<Point> drop_contours_1d(vector<vector<Point>> contours, int prop){
 potential arguments :
 --bees <number of bees>
 --time
---scale <scale> (currently multiplied by 320x240 to get screen size)
+--scale <scale> (currently multiplied by 3
+20x240 to get screen size)
 --size <size>   (the size of each bee)
 --soundb <sound divisor> (the sound divisor used for the audiohandler)
---steps (shows intermediate images)
 */
 int main(int argc, char **argv) {
 
 	//various parameters
 	int width = 640;
 	int height = 480;
-	int down_width = 320; //we resize our input arrays for faster computation
-	int down_height = 240;
+	int down_width = 640; //we resize our input arrays for faster computation
+	int down_height = 480;
 	int contour_drop = 1; //we keep 1/<contour_drop> contours
-	int depth_threshold = 1500; //threshold depth in mm
-  float scale = 3.0f; //scale for graphics window
-  float bee_size = 2.0f; //size of each bee
+	int depth_threshold = 2000; //threshold depth in mm
+  	int scale = 3; //scale for graphics window
+  	int bee_size = 2; //size of each bee
 	int num_bees = 1200; //number of bees
-  int bee_total = 0; //time spent on bee module
+  	int bee_total = 0; //time spent on bee module
 	bool time_it = false; //whether we use timing or not
   int sound_divisor = 20; //parameter for audiohandler
   int randgen = 1;
-  bool steps = false; //whether or not to show intermediate images
 
   	//set variables for timing
 	chrono::time_point<std::chrono::high_resolution_clock> time_start;
@@ -137,20 +135,16 @@ int main(int argc, char **argv) {
         bee_total = 0;
       }
 
-      if(String(argv[i]).compare("--scale")==0 && argc>(i+1)){
-        scale = stof(String(argv[i+1]));
+      if(String(argv[i]).compare("--scale")==0 && argc>(i+1) && isInteger(argv[i+1])){
+        scale = stoi(String(argv[i+1]));
       }
 
-      if(String(argv[i]).compare("--size")==0 && argc>(i+1)){
-        bee_size = stof(String(argv[i+1]));
+      if(String(argv[i]).compare("--size")==0 && argc>(i+1) && isInteger(argv[i+1])){
+        bee_size = stoi(String(argv[i+1]));
       }
 
       if(String(argv[i]).compare("--soundb")==0 && argc>(i+1) && isInteger(argv[i+1])){
         sound_divisor = stoi(String(argv[i+1]));
-      }
-
-      if(String(argv[i]).compare("--steps")==0){
-        steps = true;
       }
     }
   }
@@ -163,7 +157,7 @@ int main(int argc, char **argv) {
   //numThreads - how many threads
   //storedFrames - how many frames are stored for averaging
   //avgPercent - % of the stored frames that must contain a contour before considering that contour
-	BeeHandle bee_handle = BeeHandle(down_width, down_height, 5, 0.8, 4, 15, (double) 1/5);
+	BeeHandle bee_handle = BeeHandle(down_width, down_height, 3, 0.8, 4, 15, (double) 1/5);
 	//bee_handle.add_bees(num_bees);
   for (int i = 0; i < num_bees; i++){
     bee_handle.addP();
@@ -173,7 +167,7 @@ int main(int argc, char **argv) {
 	//bee_handle.add_bees(num_bees);
 
 	AudioHandler audio = AudioHandler(down_width, down_height);
-  audio.play_sound(32);
+  //audio.play_sound(32);
 
 	//seed our random number generator
 	RNG rng(1235);
@@ -192,10 +186,9 @@ int main(int argc, char **argv) {
 	Mat finalFrame = Mat::zeros(Size(down_width, down_height), CV_8UC1);
 
 
-  /*
   //path variables
-  string rootdir = "./pbfiles/";
-  string hand_labels = "labels_map.pbtxt";
+        string rootdir = "./pbfiles/";
+    	string hand_labels = "labels_map.pbtxt";
 	string hand_graph = "frozen_inference_graph.pb";
 	string gesture_graph = "output_graph.pb";
 	string inputLayer = "image_tensor:0";
@@ -239,7 +232,6 @@ int main(int argc, char **argv) {
     	shape.AddDim(down_height);
     	shape.AddDim(down_width);
     	shape.AddDim(3);
-  */
 
 	//create all the vectors that we'll need
 	vector<vector<Point>> contours;
@@ -276,10 +268,7 @@ int main(int argc, char **argv) {
 	vector<int> bee_dir (num_bees);
   vector<int> bee_landed;
 
-  //windows for displaying intermediates
-  cv::namedWindow("rgb", cv::WINDOW_AUTOSIZE);
-  cv::namedWindow("masked", cv::WINDOW_AUTOSIZE);
-  cv::namedWindow("edges", cv::WINDOW_AUTOSIZE);
+  //cv::namedWindow("rgb", cv::WINDOW_AUTOSIZE);
   //cv::waitKey(0);
 
 	if(time_it)
@@ -291,8 +280,8 @@ int main(int argc, char **argv) {
 		//get time for frame limiting
 		limiter_start = chrono::system_clock::now();
 		chrono::duration<double, std::milli> work_time = limiter_start - limiter_end;
-		if(work_time.count() < 33.0){ //30 FPS
-			chrono::duration<double, std::milli> delta_ms(33.0 - work_time.count());
+		if(work_time.count() < 20.0){ //50 FPS
+			chrono::duration<double, std::milli> delta_ms(20.0 - work_time.count());
             		auto delta_ms_duration = chrono::duration_cast<chrono::milliseconds>(delta_ms);
             		this_thread::sleep_for(chrono::milliseconds(delta_ms_duration.count()));
 		}
@@ -308,7 +297,7 @@ int main(int argc, char **argv) {
 		//get one frame of video and one frame of depth from the kinect
 		device.getVideo(rgbIn);
 		device.getDepth(depthIn);
-
+		
 		//gesture detection
 		/*
 		if(iterations%15==0) {
@@ -347,14 +336,14 @@ int main(int argc, char **argv) {
 		}
 		*/
 
+		//imshow("rgb", rgb_down);
+
 		//resize input image and depth for decreased computation
 		cv::resize(rgbIn, rgb_down, Size(down_width, down_height));
 		cv::resize(depthIn, depth_down, Size(down_width, down_height));
 
-    if(steps){
-      cv::imshow("rgb", rgb_down);
-		  cv::waitKey(1);
-    }
+		//cv::imshow("RGB IN", rgbIn);
+		cv::waitKey(1);
 
 		//normalize depth to 0-255 range and filter every depth past our threshold
 		depth_down.convertTo(depthf, CV_8UC3, 255.0/10000.0); //kinect caps out at 10000 mm
@@ -362,14 +351,8 @@ int main(int argc, char **argv) {
 
 		//background subtraction, filter our video mased on our depth thresholding
 		cv::threshold(depthf, mask, 1, 255, THRESH_BINARY);
-    rgb_down.setTo(Scalar(64, 177, 0), 255-mask);
-    cv::cvtColor(rgb_down, outMat, cv::COLOR_BGR2GRAY);
+		cv::cvtColor(rgb_down, grayMat, cv::COLOR_BGR2GRAY);
 		grayMat.copyTo(outMat, mask);
-
-    if(steps){
-      cv::imshow("masked", rgb_down);
-      cv::waitKey(1);
-    }
 
 		//find edges and contours
 		cv::medianBlur(outMat, outMat, 3);
@@ -377,11 +360,6 @@ int main(int argc, char **argv) {
 		cv::findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1, cv::Point(0,0));
 		flat_contours = drop_contours_1d(contours, contour_drop);
 		int old_size = flat_contours.size();
-
-    if(steps){
-      cv::imshow("edges", cannyResult);
-      cv::waitKey(1);
-    }
 
 		// Duplicate edges randomly for better outlines
 		for(int i=0; i < old_size; i++) {
@@ -464,32 +442,33 @@ int main(int argc, char **argv) {
         if(bee_positions[i].x < down_width/2 && bee_positions[i].y < down_height/2){
           randgen = rand() % 8;
           audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
-          audio.play_sound(randgen);
+          //audio.play_sound(randgen);
         }
 
 	//sounds like two sounds - bwooiii and dn
         if(bee_positions[i].x < down_width/2 && bee_positions[i].y >= down_height/2){
           randgen = rand() % 8 + 8;
           audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
-          audio.play_sound(randgen);
+          //audio.play_sound(randgen);
         }
 
-	//buzzing
+	//buzzing	
         if(bee_positions[i].x >= down_width/2 && bee_positions[i].y < down_height/2){
           randgen = rand() % 8 + 16;
           audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
-          audio.play_sound(randgen);
+          //audio.play_sound(randgen);
         }
 
 	//chimes
         if(bee_positions[i].x >= down_width/2 && bee_positions[i].y >= down_height/2){
-          randgen = rand() % 8 + 24;
+          randgen = rand()%(31-25 + 1) + 25;
           audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
           audio.play_sound(randgen);
         }
       }
 
     }
+
 
 		//update our graphics module
 		for(int i = 0; i < num_bees; i++){
@@ -514,6 +493,7 @@ int main(int argc, char **argv) {
 		}else{
 			qr_start = chrono::system_clock::now();
 		}
+
 
 		//end timer for bees if timing is enabled
 		if(time_it){
