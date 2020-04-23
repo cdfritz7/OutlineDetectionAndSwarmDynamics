@@ -82,13 +82,15 @@ vector<Point> drop_contours_1d(vector<vector<Point>> contours, int prop){
 /*
 potential arguments :
 --bees <number of bees>
---time
+--time		(if present, times the exection)
+--videos	(if present, shows the videos for rgb in, background subtracted and edges)
 --scale <scale> (currently multiplied by 320x240 to get screen size)
 --size <size>   (the size of each bee)
 --soundb <sound divisor> (the sound divisor used for the audiohandler)
 --steps (shows intermediate images)
 --fullscreen (displays the window to entire screen)
 --canny <int> <int> (sets the upper and lower thresholds for edge detection)
+--stepsize <stepsize> (the distance bees can travel in one frame)
 */
 int main(int argc, char **argv) {
 
@@ -150,6 +152,10 @@ int main(int argc, char **argv) {
         bee_size = stof(String(argv[i+1]));
       }
 
+      if(String(argv[i]).compare("--stepsize")==0 && argc>(i+1)){
+        step_size = stof(String(argv[i+1]));
+      }
+
       if(String(argv[i]).compare("--soundb")==0 && argc>(i+1) && isInteger(argv[i+1])){
         sound_divisor = stoi(String(argv[i+1]));
       }
@@ -177,7 +183,7 @@ int main(int argc, char **argv) {
   //numThreads - how many threads
   //storedFrames - how many frames are stored for averaging
   //avgPercent - % of the stored frames that must contain a contour before considering that contour
-	BeeHandle bee_handle = BeeHandle(down_width, down_height, 5, 0.8, 4, 15, (double) 1/5);
+	BeeHandle bee_handle = BeeHandle(down_width, down_height, step_size, 0.2, 4, 15, (double) 1/5);
 	//bee_handle.add_bees(num_bees);
   for (int i = 0; i < num_bees; i++){
     bee_handle.addP();
@@ -187,7 +193,7 @@ int main(int argc, char **argv) {
 	//bee_handle.add_bees(num_bees);
 
 	AudioHandler audio = AudioHandler(down_width, down_height);
-  audio.play_sound(32);
+  //audio.play_sound(32);
 
 	//seed our random number generator
 	RNG rng(1235);
@@ -437,6 +443,15 @@ int main(int argc, char **argv) {
 			num_dropped = 0;
 		}
 
+		if(intermediates){
+			cv::imshow("Video In", rgbIn);
+			cv::waitKey(1);
+			cv::imshow("Background Subtracted", outMat);
+			cv::waitKey(1);
+			cv::imshow("Edges", cannyResult);
+			cv::waitKey(1);
+		}
+
 		//start timer for bee module if timing is enabled
 		if(time_it){
 			bee_start = chrono::high_resolution_clock::now();
@@ -508,7 +523,7 @@ int main(int argc, char **argv) {
 
 	//chimes
         if(bee_positions[i].x >= down_width/2 && bee_positions[i].y >= down_height/2){
-          randgen = rand() % 8 + 24;
+          randgen = rand()%(31-25 + 1) + 25;
           audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
           audio.play_sound(randgen);
         }
@@ -577,5 +592,11 @@ int main(int argc, char **argv) {
 	cannyResult.release();
 	lastFrame.release();
 
+	//release debugging windows
+	if(intermediates){
+		cv::destroyWindow("Video In");
+		cv::destroyWindow("Background Subtracted");
+		cv::destroyWindow("Edges");
+	}
 	return 0;
 }

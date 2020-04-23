@@ -138,14 +138,14 @@ params:
 	                   of the constructor
 */
 GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
-	                             float screenScale,
+	                       float screenScale,
 															 float beeSize,
 															 bool fullscreen,
 															 const char* texture_fp,
 															 const char* module_dir){
 
-	pixelsX = (int)screenScale*maxX;
-	pixelsY = (int)screenScale*maxY;
+	pixelsX = (int)(screenScale*maxX);
+	pixelsY = (int)(screenScale*maxY);
 	//variables for qr, recording and text
 	qr_enabled = false;
 	record = false;
@@ -183,7 +183,7 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
   }
 
   glfwWindowHint(GLFW_SAMPLES, 4);
-  glfwWindowHint(GLFW_RESIZABLE,GL_TRUE);
+  glfwWindowHint(GLFW_RESIZABLE,GL_FALSE);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
