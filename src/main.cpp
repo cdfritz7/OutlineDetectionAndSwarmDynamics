@@ -87,14 +87,16 @@ potential arguments :
 --size <size>   (the size of each bee)
 --soundb <sound divisor> (the sound divisor used for the audiohandler)
 --steps (shows intermediate images)
+--fullscreen (displays the window to entire screen)
+--canny <int> <int> (sets the upper and lower thresholds for edge detection)
 */
 int main(int argc, char **argv) {
 
 	//various parameters
-	int width = 640;
+	int width = 300;
 	int height = 480;
-	int down_width = 320; //we resize our input arrays for faster computation
-	int down_height = 240;
+	int down_width = 300; //we resize our input arrays for faster computation
+	int down_height = 480;
 	int contour_drop = 1; //we keep 1/<contour_drop> contours
 	int depth_threshold = 1500; //threshold depth in mm
   float scale = 3.0f; //scale for graphics window
@@ -105,6 +107,9 @@ int main(int argc, char **argv) {
   int sound_divisor = 20; //parameter for audiohandler
   int randgen = 1;
   bool steps = false; //whether or not to show intermediate images
+  bool fullscreen = false; //whether the graphics window should occupy the entire screen
+  int c_lower_thres = 50; //lower threshold for canny edge detection
+  int c_upper_thres = 100;  //upper thrshold for canny edge detection
 
   	//set variables for timing
 	chrono::time_point<std::chrono::high_resolution_clock> time_start;
@@ -149,8 +154,17 @@ int main(int argc, char **argv) {
         sound_divisor = stoi(String(argv[i+1]));
       }
 
+      if(String(argv[i]).compare("--canny")==0 && argc>(i+2) && isInteger(argv[i+1]) && isInteger(argv[i+2])){
+        c_lower_thres = stoi(String(argv[i+1]));
+        c_upper_thres = stoi(String(argv[i+2]));
+      }
+
       if(String(argv[i]).compare("--steps")==0){
         steps = true;
+      }
+
+      if(String(argv[i]).compare("--fullscreen")==0){
+        fullscreen = true;
       }
     }
   }
@@ -179,8 +193,10 @@ int main(int argc, char **argv) {
 	RNG rng(1235);
 
 	//create the matrices we'll use
-	Mat depthIn = Mat::zeros(Size(width,height), CV_16UC1);
-	Mat rgbIn = Mat::zeros(Size(width,height), CV_8UC3);
+	Mat depthIn = Mat::zeros(Size(640,480), CV_16UC1); //kinect always reads in at this size
+	Mat rgbIn = Mat::zeros(Size(640,480), CV_8UC3);
+  Mat cropDepthIn = Mat::zeros(Size(width, height), CV_16UC1);
+  Mat cropRgbIn = Mat::zeros(Size(width, height), CV_8UC3);
 	Mat depth_down = Mat::zeros(Size(down_width,down_height),CV_16UC1);
 	Mat rgb_down = Mat::zeros(Size(down_width,down_height),CV_8UC3);
 	Mat depthf = Mat::zeros(Size(down_width,down_height),CV_8UC3);
@@ -265,7 +281,7 @@ int main(int argc, char **argv) {
 
 	//initialization for graphics module
 	GraphicsModule gm (num_bees, down_width, down_height,
-		                 scale, bee_size/10.0f,
+		                 scale, bee_size/10.0f, fullscreen,
 		                 "./graphics/abee.png",
 	                   "./graphics/");
 	vector<int> bee_x (num_bees);
@@ -277,9 +293,11 @@ int main(int argc, char **argv) {
   vector<int> bee_landed;
 
   //windows for displaying intermediates
-  cv::namedWindow("rgb", cv::WINDOW_AUTOSIZE);
-  cv::namedWindow("masked", cv::WINDOW_AUTOSIZE);
-  cv::namedWindow("edges", cv::WINDOW_AUTOSIZE);
+  if(steps){
+    cv::namedWindow("rgb", cv::WINDOW_AUTOSIZE);
+    cv::namedWindow("masked", cv::WINDOW_AUTOSIZE);
+    cv::namedWindow("edges", cv::WINDOW_AUTOSIZE);
+  }
   //cv::waitKey(0);
 
 	if(time_it)
@@ -309,6 +327,18 @@ int main(int argc, char **argv) {
 		device.getVideo(rgbIn);
 		device.getDepth(depthIn);
 
+    //crop frame to fit on vertical screen
+    int h_left = (640 - width)/2;
+    int h_right = 640 - (640 - width)/2;
+    int v_left = (480 - height)/2;
+    int v_right = 480 - (480 - height)/2;
+    cropRgbIn = rgbIn(cv::Rect(cv::Point(h_left, v_left), cv::Point(h_right, v_right))).clone();
+    cropDepthIn = depthIn(cv::Rect(cv::Point(h_left, v_left), cv::Point(h_right, v_right))).clone();
+
+    if(steps){
+      cv::imshow("rgb", cropDepthIn);
+      cv::waitKey(1);
+    }
 		//gesture detection
 		/*
 		if(iterations%15==0) {
@@ -348,13 +378,8 @@ int main(int argc, char **argv) {
 		*/
 
 		//resize input image and depth for decreased computation
-		cv::resize(rgbIn, rgb_down, Size(down_width, down_height));
-		cv::resize(depthIn, depth_down, Size(down_width, down_height));
-
-    if(steps){
-      cv::imshow("rgb", rgb_down);
-		  cv::waitKey(1);
-    }
+		cv::resize(cropRgbIn, rgb_down, Size(down_width, down_height));
+		cv::resize(cropDepthIn, depth_down, Size(down_width, down_height));
 
 		//normalize depth to 0-255 range and filter every depth past our threshold
 		depth_down.convertTo(depthf, CV_8UC3, 255.0/10000.0); //kinect caps out at 10000 mm
@@ -373,7 +398,7 @@ int main(int argc, char **argv) {
 
 		//find edges and contours
 		cv::medianBlur(outMat, outMat, 3);
-		cv::Canny(outMat, cannyResult, 50, 100, 3);
+		cv::Canny(outMat, cannyResult, c_lower_thres, c_upper_thres, 3);
 		cv::findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1, cv::Point(0,0));
 		flat_contours = drop_contours_1d(contours, contour_drop);
 		int old_size = flat_contours.size();
@@ -506,11 +531,11 @@ int main(int argc, char **argv) {
 			qr_current = chrono::system_clock::now();
 			chrono::duration<double, std::milli> qr_time = qr_current - qr_start;
 	    		gm.update_qr(true, "./graphics/video.png", (int)down_width/10, (int)down_height/10, 5.0f);
-        		if(qr_time.count() >= 20000.0){ //delete qr code
-         			display_qr = false;
-				system("sudo rm ./graphics/video.png");
-          			gm.update_qr(false, "", 320, 240, 2.0f);
-			}
+        	if(qr_time.count() >= 20000.0){ //delete qr code
+            gm.update_qr(false, "", 320, 240, 2.0f);
+         		display_qr = false;
+  				  system("sudo rm ./graphics/video.png");
+  			  }
 		}else{
 			qr_start = chrono::system_clock::now();
 		}

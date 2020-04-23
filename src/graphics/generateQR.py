@@ -81,5 +81,6 @@ print('Video uploaded: %s' % file.get('id'))
 drive_service.permissions().create(fileId=file.get('id'), body=new_permission).execute()
 
 url = "https://drive.google.com/file/d/" + file.get('id') + "/view?usp=sharing"
+print(url)
 big_code = pyqrcode.create(str(url), error='L', mode='binary')
-big_code.png('video.png')
+big_code.png(cwd + '/graphics/video.png')

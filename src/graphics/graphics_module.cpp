@@ -131,6 +131,7 @@ params:
 	           as part of a particle position
 	int screenScale : how many times bigger the window will be than a maxX x maxY
 	                  matrix
+	bool fullscreen : whether or not the window should occupy the entire screen
   float beeSize : how big each of the particles should be
 	char* texture_fp : the file path to the texture (must be a .png)
 	char* module_dir : the path to graphics_module.cpp relative to the caller
@@ -139,6 +140,7 @@ params:
 GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
 	                             float screenScale,
 															 float beeSize,
+															 bool fullscreen,
 															 const char* texture_fp,
 															 const char* module_dir){
 
@@ -156,13 +158,8 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
 	screen_scale = screenScale;
 
 	//map our maxX and maxY to reasonable numbers and keep the scaling factor
-	if(maxX >= maxY){
-		scale = 20.0f/maxX;
-	  max_x = scale*maxX/2.0f; max_y = scale*maxY/2.0f;
-	}else{
-	  scale = 20.0f/maxY;
-		max_y = scale*maxY/2.0f; max_x = scale*maxX/2.0f;
-	}
+  scale = 20.0f/maxX;
+	max_x = scale*maxX/2.0f; max_y = scale*maxY/2.0f;
 
   min_x = -max_x; min_y = -max_y;
 	std::string width = std::to_string((int)(pixelsX));
@@ -193,7 +190,11 @@ GraphicsModule::GraphicsModule(int num_particles, int maxX, int maxY,
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   // Open a window and create its OpenGL context
-  window = glfwCreateWindow(pixelsX, pixelsY, "", NULL, NULL);
+	if(fullscreen){
+  	window = glfwCreateWindow(pixelsX, pixelsY, "", glfwGetPrimaryMonitor(), NULL);
+	}else
+		window = glfwCreateWindow(pixelsX, pixelsY, "", NULL, NULL);
+
 	//window = glfwCreateWindow( 1024, 1024, "", NULL, NULL);
 
   if( window == NULL ){
@@ -535,7 +536,6 @@ bool GraphicsModule::update_display(bool start_recording){
 		char temp[255];
 		getcwd(temp, sizeof(temp));
 		std::string command = "sudo python " + std::string(temp) + "/graphics/generateQR.py &";
-		cout<<"next";
 		cout << command << endl;
 		system(command.c_str());
 
@@ -651,14 +651,21 @@ void GraphicsModule::render_qr(){
 	qrcode_fp : must contain filename of a png if enabled is set to true
 */
 void GraphicsModule::update_qr(bool enabled, const char* qrcode_fp, int x, int y, int size){
-	qr_was_enabled = true;
 	QRTexture = loadPNG(qrcode_fp);
-	if(enabled && !qr_enabled){
-		qr_x = to_opengl_world_x(x);
-		qr_y = to_opengl_world_y(y);
-		qr_size = size;
+	if((int)QRTexture != -1){
+		qr_was_enabled = true;
+		if(enabled && !qr_enabled){
+			qr_x = to_opengl_world_x(x);
+			qr_y = to_opengl_world_y(y);
+			qr_size = size;
+		}
+		qr_enabled = enabled;
+	}else{
+		qr_enabled = false;
 	}
-	qr_enabled = enabled;
+
+	if(!enabled)
+		qr_enabled = false;
 }
 
 /*

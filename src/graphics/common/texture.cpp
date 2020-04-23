@@ -104,6 +104,11 @@ GLuint loadPNG(const char* filepath){
 	stbi_set_flip_vertically_on_load(1);
 	unsigned char *data = stbi_load(filepath, &width, &height, &nrChannels, 0);
 
+	if(data == NULL){
+		stbi_image_free(data);
+		return -1;
+	}
+
 	// Create one OpenGL texture
 	GLuint textureID;
 	glGenTextures(1, &textureID);
@@ -116,6 +121,8 @@ GLuint loadPNG(const char* filepath){
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 	else if(nrChannels == 1)
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data);
+	else
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 
 	stbi_image_free(data);
 
