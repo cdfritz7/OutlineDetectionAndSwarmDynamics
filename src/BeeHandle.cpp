@@ -69,8 +69,8 @@ static bool setPointsInChunks = false;
 // get the chunk coords of a given location on the screen
 // useful to be able to go from a bee to it's chunk
 static pair<int, int> screenLocToChunk(int x, int y, int xWidth, int yWidth) {
-	int chunkX = xWidth/chunkToPoints.size();
-	int chunkY = yWidth/chunkToPoints.at(0).size();
+	int chunkX = x/(xWidth/chunkToPoints.size());
+	int chunkY = y/(yWidth/chunkToPoints.at(0).size());
 	return make_pair(chunkX, chunkY);
 }
 
@@ -83,7 +83,10 @@ static vector<int> getNeighbors(pair<int, int> chunk) {
 			int x = i%chunkToPoints.size();
 			int y = j%chunkToPoints.at(0).size();
 			vector<int> points = chunkToPoints.at(x).at(y);
-			result.insert(result.end(), points.begin(), points.end());
+			if(result.size() != 0)
+				result.insert(result.end(), points.begin(), points.end());
+			else
+				result = points;
 		}
 	}
 	return result;
@@ -249,8 +252,12 @@ void BeeHandle::movePoints() {
 			pair<int,int> newChunk = screenLocToChunk(staticPoints[P_idx].x, staticPoints[P_idx].y, xWidth, yWidth);
 
 			if(oldChunk.first != newChunk.first || oldChunk.second != newChunk.second) {
-				vector<int> vec = chunkToPoints.at(oldChunk.first).at(oldChunk.second);
-				vec.erase(remove(vec.begin(), vec.end(), P_idx), vec.end());
+				if(oldChunk.size() == 1)
+					oldChunk.clear();
+				else {
+					vector<int> vec = chunkToPoints.at(oldChunk.first).at(oldChunk.second);
+					vec.erase(remove(vec.begin(), vec.end(), P_idx), vec.end());
+				}
 				chunkToPoints.at(newChunk.first).at(newChunk.second).push_back(P_idx);
 			}
 
@@ -442,7 +449,3 @@ void BeeHandle::addAttractorsAvg(vector<cv::Point> new_attractors) {
 		attractorHistory.erase(attractorHistory.begin());
 	}
 }
-
-
-
-
