@@ -345,8 +345,8 @@ Status readTensorFromMat(const Mat &mat, Tensor &outTensor) {
 }
 
 // detect
-void detect(unique_ptr<tensorflow::Session> &session2, Mat &image, double yMin, double xMin, double yMax, double xMax, double score, bool* is_expected, bool scaled=true) {
-    LOG(INFO)<<"hand score" << score << endl;
+void detect(cv::Rect &rec, unique_ptr<tensorflow::Session> &session2, Mat &image, double yMin, double xMin, double yMax, double xMax, double score, bool* is_expected, bool scaled=true) {
+    //LOG(INFO)<<"hand score" << score << endl;
     //LOG(INFO)<<"image height:"<<image.size().height<<endl;
     //LOG(INFO)<<"image width:"<<image.size().width<<endl;
     //LOG(INFO)<<"image cols:"<<image.cols<<"(xMin * image.cols):"<<(xMin * image.cols)<<endl;
@@ -367,10 +367,10 @@ void detect(unique_ptr<tensorflow::Session> &session2, Mat &image, double yMin, 
     //LOG(INFO)<<"tl point:"<<tl<<"\n"<<"br point:"<<br<<"\n"<<endl;
     int roi_width = br.x-tl.x;
     int roi_height = br.y-tl.y;
-    Rect Rec(tl.x,tl.y,roi_width,roi_height);
+    rec=Rect(tl.x,tl.y,roi_width,roi_height);
 
     // get region of interest
-    Mat roi = image(Rec);
+    Mat roi = image(rec);
     Mat resized;
     Mat imgcanny;
     int columnResized = 80;
@@ -441,7 +441,7 @@ void detect(unique_ptr<tensorflow::Session> &session2, Mat &image, double yMin, 
         LOG(ERROR) << "Running print failed: " << print_status;
     }
     // LOG(INFO) >> "Check top labels" << endl;
-    int expected = 1;
+    int expected = 2;
     Status check_status = CheckTopLabel(outputs, expected, is_expected);
     if (!check_status.ok()) {
         LOG(ERROR) << "Running check top label failed: " << check_status;
@@ -449,16 +449,19 @@ void detect(unique_ptr<tensorflow::Session> &session2, Mat &image, double yMin, 
 }
 
 // detect
-void detect(unique_ptr<tensorflow::Session> &session2, Mat &image,
+void detect(cv::Rect &rec, unique_ptr<tensorflow::Session> &session2, Mat &image,
                               tensorflow::TTypes<float>::Flat &scores,
                               tensorflow::TTypes<float,3>::Tensor &boxes,
                               vector<size_t> &idxs, bool* is_expected) {
+    if(idxs.size()==0){
+	*is_expected = false;
+    }
     for (int j = 0; j < idxs.size(); j++){
 	//LOG(INFO)<<j<<endl;
-	if(scores(idxs.at(j)) < 0.7){
+	if(scores(idxs.at(j)) < 0.8){
 		*is_expected = false;
 	}else{
-        	detect(session2, image,
+        	detect(rec, session2, image,
                                boxes(0,idxs.at(j),0), boxes(0,idxs.at(j),1),
                                boxes(0,idxs.at(j),2), boxes(0,idxs.at(j),3),
                                scores(idxs.at(j)), is_expected);

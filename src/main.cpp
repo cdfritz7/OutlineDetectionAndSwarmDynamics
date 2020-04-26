@@ -112,6 +112,7 @@ int main(int argc, char **argv) {
   bool fullscreen = false; //whether the graphics window should occupy the entire screen
   int c_lower_thres = 50; //lower threshold for canny edge detection
   int c_upper_thres = 100;  //upper thrshold for canny edge detection
+  int step_size = 3;
 
   	//set variables for timing
 	chrono::time_point<std::chrono::high_resolution_clock> time_start;
@@ -213,8 +214,10 @@ int main(int argc, char **argv) {
 	Mat outMat = Mat::zeros(Size(width, height),CV_8UC1);
 	Mat finalFrame = Mat::zeros(Size(down_width, down_height), CV_8UC1);
 
-
-  /*
+	bool expected = false;
+	bool was_expected = false;
+	int count_frames = 30;
+  
   //path variables
   string rootdir = "./pbfiles/";
   string hand_labels = "labels_map.pbtxt";
@@ -251,6 +254,8 @@ int main(int argc, char **argv) {
 	    return -1;
 	}
 
+	Mat resized;
+
 	//tensor shape
 	Tensor tensor;
     	vector<Tensor> outputs;
@@ -261,7 +266,7 @@ int main(int argc, char **argv) {
     	shape.AddDim(down_height);
     	shape.AddDim(down_width);
     	shape.AddDim(3);
-  */
+  
 
 	//create all the vectors that we'll need
 	vector<vector<Point>> contours;
@@ -271,6 +276,10 @@ int main(int argc, char **argv) {
 	vector<Point> bee_attractors;
 	vector<int> landed;
 	//vector<bool> bee_trigger;
+
+	vector<vector<Point>> capturedContours;
+	vector<Point> captured_flat_contours;
+	vector<Vec4i> capturedHierarchy;
 
 	//create our connection to the connect
 	Freenect::Freenect freenect;
@@ -346,7 +355,10 @@ int main(int argc, char **argv) {
       cv::waitKey(1);
     }
 		//gesture detection
-		/*
+		Rect rec;
+		
+		//LOG(INFO)<<"show captured"<<endl;
+ 			
 		if(iterations%15==0) {
 			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
 
@@ -378,10 +390,16 @@ int main(int argc, char **argv) {
 			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
 	 		// LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
 			// LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
-			bool expected = false;
-			detect(session2, rgb_down, scores, boxes, goodIdxs, &expected);
+			
+			detect(rec, session2, rgb_down, scores, boxes, goodIdxs, &expected);
+			//if(iterations%30==0){expected = true;}else{expected = false;}
+			if(expected){
+				audio.play_sound(iterations%32+1);
+				was_expected = true;
+			
+			}
 		}
-		*/
+		
 
 		//resize input image and depth for decreased computation
 		cv::resize(cropRgbIn, rgb_down, Size(down_width, down_height));
@@ -404,12 +422,19 @@ int main(int argc, char **argv) {
 
 		//find edges and contours
 		cv::medianBlur(outMat, outMat, 3);
-		cv::Canny(outMat, cannyResult, c_lower_thres, c_upper_thres, 3);
+		if(expected){
+			resized = outMat(rec);
+			cv::Canny(resized, cannyResult, c_lower_thres, c_upper_thres, 3);
+		}else{
+			cv::Canny(outMat, cannyResult, c_lower_thres, c_upper_thres, 3);
+		}
 		cv::findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1, cv::Point(0,0));
 		flat_contours = drop_contours_1d(contours, contour_drop);
 		int old_size = flat_contours.size();
 
     if(steps){
+      //cv::imshow("outMat",outMat);
+      //cv::imshow("resized", resized);
       cv::imshow("edges", cannyResult);
       cv::waitKey(1);
     }
@@ -443,12 +468,12 @@ int main(int argc, char **argv) {
 			num_dropped = 0;
 		}
 
-		if(intermediates){
-			cv::imshow("Video In", rgbIn);
+		if(steps){
+			cv::imshow("rgb", rgbIn);
 			cv::waitKey(1);
-			cv::imshow("Background Subtracted", outMat);
+			cv::imshow("masked", rgb_down);
 			cv::waitKey(1);
-			cv::imshow("Edges", cannyResult);
+			cv::imshow("edges", cannyResult);
 			cv::waitKey(1);
 		}
 
@@ -476,9 +501,22 @@ int main(int argc, char **argv) {
 
 		//flatten contours and add as "flowers" to bee_handle
 		//bee_handle.add_flowers(flat_contours);
-
-    bee_handle.addAttractorsAvg(flat_contours);
+		
+		
+    		
+		if(was_expected==true && expected==false){
+			count_frames--;
+		}else{
+			flat_contours.insert(flat_contours.end(), captured_flat_contours.begin(), captured_flat_contours.end());
+			bee_handle.addAttractorsAvg(flat_contours);
+		}
+		if(count_frames==0){
+		        was_expected = false;
+			count_frames = 30;
+		}
+		
 		bee_handle.updatePoints();
+
 
 		int new_size = flat_contours.size();
 		for(int i=0; i<(new_size-old_size); i++) {
@@ -504,21 +542,21 @@ int main(int argc, char **argv) {
         if(bee_positions[i].x < down_width/2 && bee_positions[i].y < down_height/2){
           randgen = rand() % 8;
           audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
-          audio.play_sound(randgen);
+          //audio.play_sound(randgen);
         }
 
 	//sounds like two sounds - bwooiii and dn
         if(bee_positions[i].x < down_width/2 && bee_positions[i].y >= down_height/2){
           randgen = rand() % 8 + 8;
           audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
-          audio.play_sound(randgen);
+        //  audio.play_sound(randgen);
         }
 
 	//buzzing
         if(bee_positions[i].x >= down_width/2 && bee_positions[i].y < down_height/2){
           randgen = rand() % 8 + 16;
           audio.set_point(randgen,bee_positions[i].x,bee_positions[i].y);
-          audio.play_sound(randgen);
+        //  audio.play_sound(randgen);
         }
 
 	//chimes
@@ -563,8 +601,10 @@ int main(int argc, char **argv) {
 		}
 
 		iterations++;
+		LOG(INFO)<<"frames: "<<iterations<<endl;
 	}while(!gm.should_close());
 
+	
 
 	//output the results of our timing
 	if(time_it){
@@ -593,10 +633,10 @@ int main(int argc, char **argv) {
 	lastFrame.release();
 
 	//release debugging windows
-	if(intermediates){
-		cv::destroyWindow("Video In");
-		cv::destroyWindow("Background Subtracted");
-		cv::destroyWindow("Edges");
+	if(steps){
+		cv::destroyWindow("rgb");
+		cv::destroyWindow("masked");
+		cv::destroyWindow("edges");
 	}
 	return 0;
 }

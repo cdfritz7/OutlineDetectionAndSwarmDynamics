@@ -39,9 +39,9 @@ Status loadGraph(const string &graph_file_name,
 
 Status readTensorFromMat(const cv::Mat &mat, Tensor &outTensor);
 
-void detect(std::unique_ptr<tensorflow::Session> &session2, cv::Mat &image, double xMin, double yMin, double xMax, double yMax, double score, bool* is_expected, bool scaled);
+void detect(cv::Rect &rec, std::unique_ptr<tensorflow::Session> &session2, cv::Mat &image, double xMin, double yMin, double xMax, double yMax, double score, bool* is_expected, bool scaled);
 
-void detect(std::unique_ptr<tensorflow::Session> &session2, cv::Mat &image,
+void detect(cv::Rect &rec, std::unique_ptr<tensorflow::Session> &session2, cv::Mat &image,
                               tensorflow::TTypes<float>::Flat &scores,
                               tensorflow::TTypes<float,3>::Tensor &boxes,
                               std::vector<size_t> &idxs, bool* is_expected);
