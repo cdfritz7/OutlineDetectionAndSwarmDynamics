@@ -173,6 +173,7 @@ int main(int argc, char **argv) {
       if(String(argv[i]).compare("--fullscreen")==0){
         fullscreen = true;
       }
+
     }
   }
 
@@ -217,7 +218,7 @@ int main(int argc, char **argv) {
 	bool expected = false;
 	bool was_expected = false;
 	int count_frames = 30;
-  
+
   //path variables
   string rootdir = "./pbfiles/";
   string hand_labels = "labels_map.pbtxt";
@@ -266,7 +267,7 @@ int main(int argc, char **argv) {
     	shape.AddDim(down_height);
     	shape.AddDim(down_width);
     	shape.AddDim(3);
-  
+
 
 	//create all the vectors that we'll need
 	vector<vector<Point>> contours;
@@ -350,15 +351,11 @@ int main(int argc, char **argv) {
     cropRgbIn = rgbIn(cv::Rect(cv::Point(h_left, v_left), cv::Point(h_right, v_right))).clone();
     cropDepthIn = depthIn(cv::Rect(cv::Point(h_left, v_left), cv::Point(h_right, v_right))).clone();
 
-    if(steps){
-      cv::imshow("rgb", cropDepthIn);
-      cv::waitKey(1);
-    }
 		//gesture detection
 		Rect rec;
-		
+
 		//LOG(INFO)<<"show captured"<<endl;
- 			
+
 		if(iterations%15==0) {
 			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
 
@@ -390,16 +387,16 @@ int main(int argc, char **argv) {
 			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
 	 		// LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
 			// LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
-			
+
 			detect(rec, session2, rgb_down, scores, boxes, goodIdxs, &expected);
 			//if(iterations%30==0){expected = true;}else{expected = false;}
 			if(expected){
 				audio.play_sound(iterations%32+1);
 				was_expected = true;
-			
+
 			}
 		}
-		
+
 
 		//resize input image and depth for decreased computation
 		cv::resize(cropRgbIn, rgb_down, Size(down_width, down_height));
@@ -413,31 +410,17 @@ int main(int argc, char **argv) {
 		cv::threshold(depthf, mask, 1, 255, THRESH_BINARY);
     rgb_down.setTo(Scalar(64, 177, 0), 255-mask);
     cv::cvtColor(rgb_down, outMat, cv::COLOR_BGR2GRAY);
-		grayMat.copyTo(outMat, mask);
-
-    if(steps){
-      cv::imshow("masked", rgb_down);
-      cv::waitKey(1);
-    }
 
 		//find edges and contours
 		cv::medianBlur(outMat, outMat, 3);
-		if(expected){
-			resized = outMat(rec);
-			cv::Canny(resized, cannyResult, c_lower_thres, c_upper_thres, 3);
-		}else{
-			cv::Canny(outMat, cannyResult, c_lower_thres, c_upper_thres, 3);
-		}
+
+    cv::Canny(outMat, cannyResult, c_lower_thres, c_upper_thres, 3);
+    if(expected){
+        cannyResult = cannyResult(rec);
+    }
 		cv::findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1, cv::Point(0,0));
 		flat_contours = drop_contours_1d(contours, contour_drop);
 		int old_size = flat_contours.size();
-
-    if(steps){
-      //cv::imshow("outMat",outMat);
-      //cv::imshow("resized", resized);
-      cv::imshow("edges", cannyResult);
-      cv::waitKey(1);
-    }
 
 		// Duplicate edges randomly for better outlines
 		for(int i=0; i < old_size; i++) {
@@ -469,9 +452,9 @@ int main(int argc, char **argv) {
 		}
 
 		if(steps){
-			cv::imshow("rgb", rgbIn);
+			cv::imshow("rgb", cropRgbIn);
 			cv::waitKey(1);
-			cv::imshow("masked", rgb_down);
+			cv::imshow("masked", outMat);
 			cv::waitKey(1);
 			cv::imshow("edges", cannyResult);
 			cv::waitKey(1);
@@ -501,9 +484,9 @@ int main(int argc, char **argv) {
 
 		//flatten contours and add as "flowers" to bee_handle
 		//bee_handle.add_flowers(flat_contours);
-		
-		
-    		
+
+
+
 		if(was_expected==true && expected==false){
 			count_frames--;
 		}else{
@@ -514,7 +497,7 @@ int main(int argc, char **argv) {
 		        was_expected = false;
 			count_frames = 30;
 		}
-		
+
 		bee_handle.updatePoints();
 
 
@@ -601,10 +584,10 @@ int main(int argc, char **argv) {
 		}
 
 		iterations++;
-		LOG(INFO)<<"frames: "<<iterations<<endl;
+		//LOG(INFO)<<"frames: "<<iterations<<endl;
 	}while(!gm.should_close());
 
-	
+
 
 	//output the results of our timing
 	if(time_it){
