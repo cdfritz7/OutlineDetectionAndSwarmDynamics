@@ -113,6 +113,9 @@ int main(int argc, char **argv) {
   int c_lower_thres = 50; //lower threshold for canny edge detection
   int c_upper_thres = 100;  //upper thrshold for canny edge detection
   int step_size = 3;
+  bool gesture = false;
+  int frame_counter = 50;
+  int count_frames = 0;
 
   	//set variables for timing
 	chrono::time_point<std::chrono::high_resolution_clock> time_start;
@@ -147,6 +150,9 @@ int main(int argc, char **argv) {
 
       if(String(argv[i]).compare("--scale")==0 && argc>(i+1)){
         scale = stof(String(argv[i+1]));
+      }
+      if(String(argv[i]).compare("--gesture")==0){
+        gesture = true;
       }
 
       if(String(argv[i]).compare("--size")==0 && argc>(i+1)){
@@ -217,7 +223,7 @@ int main(int argc, char **argv) {
 
 	bool expected = false;
 	bool was_expected = false;
-	int count_frames = 30;
+	
 
   //path variables
   string rootdir = "./pbfiles/";
@@ -256,6 +262,7 @@ int main(int argc, char **argv) {
 	}
 
 	Mat resized;
+	bool decrement = false;
 
 	//tensor shape
 	Tensor tensor;
@@ -356,7 +363,7 @@ int main(int argc, char **argv) {
 
 		//LOG(INFO)<<"show captured"<<endl;
 
-		if(iterations%15==0) {
+		if(iterations%15==0 && gesture==true) {
 			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
 
 			// Convert mat to tensor
@@ -393,11 +400,11 @@ int main(int argc, char **argv) {
 			if(expected){
 				audio.play_sound(iterations%32+1);
 				was_expected = true;
-
+				count_frames = 30;
 			}
 		}
 
-
+		
 		//resize input image and depth for decreased computation
 		cv::resize(cropRgbIn, rgb_down, Size(down_width, down_height));
 		cv::resize(cropDepthIn, depth_down, Size(down_width, down_height));
@@ -413,12 +420,13 @@ int main(int argc, char **argv) {
 
 		//find edges and contours
 		cv::medianBlur(outMat, outMat, 3);
-
-    cv::Canny(outMat, cannyResult, c_lower_thres, c_upper_thres, 3);
-    if(expected){
-        cannyResult = cannyResult(rec);
-    }
-		cv::findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1, cv::Point(0,0));
+		if(was_expected){
+			Mat roi = outMat(rec);
+			cv::Canny(roi, cannyResult, c_lower_thres, c_upper_thres, 3);
+		}else{
+    			cv::Canny(outMat, cannyResult, c_lower_thres, c_upper_thres, 3);
+		}
+    		cv::findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1, cv::Point(0,0));
 		flat_contours = drop_contours_1d(contours, contour_drop);
 		int old_size = flat_contours.size();
 
@@ -485,19 +493,23 @@ int main(int argc, char **argv) {
 		//flatten contours and add as "flowers" to bee_handle
 		//bee_handle.add_flowers(flat_contours);
 
-
-
-		if(was_expected==true && expected==false){
+		if(was_expected){
 			count_frames--;
-		}else{
-			flat_contours.insert(flat_contours.end(), captured_flat_contours.begin(), captured_flat_contours.end());
+			
+		}
+		if(count_frames==0 && was_expected ==true){
+			was_expected = false;
+			decrement = true;
+		}
+		if(decrement==false){
 			bee_handle.addAttractorsAvg(flat_contours);
+		}else{
+			frame_counter--;
 		}
-		if(count_frames==0){
-		        was_expected = false;
-			count_frames = 30;
+		if(frame_counter==0){
+			decrement = false;
+			frame_counter = 50;
 		}
-
 		bee_handle.updatePoints();
 
 
