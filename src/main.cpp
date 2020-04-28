@@ -113,6 +113,9 @@ int main(int argc, char **argv) {
   int c_lower_thres = 50; //lower threshold for canny edge detection
   int c_upper_thres = 100;  //upper thrshold for canny edge detection
   int step_size = 3;
+  bool gesture = false;
+  int frame_counter = 50;
+  int count_frames = 0;
 
   	//set variables for timing
 	chrono::time_point<std::chrono::high_resolution_clock> time_start;
@@ -148,6 +151,9 @@ int main(int argc, char **argv) {
       if(String(argv[i]).compare("--scale")==0 && argc>(i+1)){
         scale = stof(String(argv[i+1]));
       }
+      if(String(argv[i]).compare("--gesture")==0){
+        gesture = true;
+      }
 
       if(String(argv[i]).compare("--size")==0 && argc>(i+1)){
         bee_size = stof(String(argv[i+1]));
@@ -173,6 +179,7 @@ int main(int argc, char **argv) {
       if(String(argv[i]).compare("--fullscreen")==0){
         fullscreen = true;
       }
+
     }
   }
 
@@ -216,8 +223,8 @@ int main(int argc, char **argv) {
 
 	bool expected = false;
 	bool was_expected = false;
-	int count_frames = 30;
-  
+	
+
   //path variables
   string rootdir = "./pbfiles/";
   string hand_labels = "labels_map.pbtxt";
@@ -255,6 +262,7 @@ int main(int argc, char **argv) {
 	}
 
 	Mat resized;
+	bool decrement = false;
 
 	//tensor shape
 	Tensor tensor;
@@ -266,7 +274,7 @@ int main(int argc, char **argv) {
     	shape.AddDim(down_height);
     	shape.AddDim(down_width);
     	shape.AddDim(3);
-  
+
 
 	//create all the vectors that we'll need
 	vector<vector<Point>> contours;
@@ -281,6 +289,12 @@ int main(int argc, char **argv) {
 	vector<Point> captured_flat_contours;
 	vector<Vec4i> capturedHierarchy;
 
+	VideoCapture cap("profile.mov");
+	if(cap.isOpened()){
+		LOG(INFO)<<"video passed"<<endl;
+	}
+	Mat frame;
+	Mat finalResized;
 	//create our connection to the connect
 	Freenect::Freenect freenect;
 	MyFreenectDevice& device = freenect.createDevice<MyFreenectDevice>(0);
@@ -320,7 +334,11 @@ int main(int argc, char **argv) {
 
 	//main loop
   do {
-
+		cap >> frame;
+		if(frame.empty()){
+			LOG(INFO)<<"frame is empty"<<endl;
+			break;
+		}
 		//get time for frame limiting
 		limiter_start = chrono::system_clock::now();
 		chrono::duration<double, std::milli> work_time = limiter_start - limiter_end;
@@ -350,21 +368,22 @@ int main(int argc, char **argv) {
     cropRgbIn = rgbIn(cv::Rect(cv::Point(h_left, v_left), cv::Point(h_right, v_right))).clone();
     cropDepthIn = depthIn(cv::Rect(cv::Point(h_left, v_left), cv::Point(h_right, v_right))).clone();
 
-    if(steps){
-      cv::imshow("rgb", cropDepthIn);
-      cv::waitKey(1);
-    }
 		//gesture detection
 		Rect rec;
-		
+
 		//LOG(INFO)<<"show captured"<<endl;
- 			
-		if(iterations%15==0) {
-			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
+		//LOG(INFO)<<"frame height: "<<frame.rows<<"  frame width: "<<frame.cols<<endl;
+		//resize input image and depth for decreased computation
+		cv::resize(frame, resized, Size(720, 480));
+		Rect cropResized(210,0,300,480);
+		finalResized = resized(cropResized);
+
+		if(iterations%15==0 && gesture==true) {
+			cvtColor(finalResized, finalResized, COLOR_BGR2RGB);
 
 			// Convert mat to tensor
 			tensor = Tensor(tensorflow::DT_FLOAT, shape);
-			Status read_tensor_status = readTensorFromMat(rgb_down, tensor);
+			Status read_tensor_status = readTensorFromMat(finalResized, tensor);
 			if (!read_tensor_status.ok()) {
 		 	   LOG(ERROR) << "Mat->Tensor conversion failed: " << read_tensor_status;
 	   	         return -1;
@@ -387,21 +406,21 @@ int main(int argc, char **argv) {
 			vector<size_t> goodIdxs = filterBoxes(scores, boxes, thresholdIOU, thresholdScore);
 
 			// Draw boxes and captions
-			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
+			cvtColor(finalResized, finalResized, COLOR_BGR2RGB);
 	 		// LOG(INFO)<<"rgb_down cols:"<<rgb_down.cols<<endl;
 			// LOG(INFO)<<"rgb_down height:"<<rgb_down.size().height<<endl;
-			
-			detect(rec, session2, rgb_down, scores, boxes, goodIdxs, &expected);
+
+			detect(rec, session2, finalResized, scores, boxes, goodIdxs, &expected);
 			//if(iterations%30==0){expected = true;}else{expected = false;}
 			if(expected){
+				LOG(INFO)<<"expected"<<endl;
 				audio.play_sound(iterations%32+1);
 				was_expected = true;
-			
+				count_frames = 30;
 			}
 		}
-		
 
-		//resize input image and depth for decreased computation
+		LOG(INFO)<<"gesture detection passed"<<endl;
 		cv::resize(cropRgbIn, rgb_down, Size(down_width, down_height));
 		cv::resize(cropDepthIn, depth_down, Size(down_width, down_height));
 
@@ -411,33 +430,20 @@ int main(int argc, char **argv) {
 
 		//background subtraction, filter our video mased on our depth thresholding
 		cv::threshold(depthf, mask, 1, 255, THRESH_BINARY);
-    rgb_down.setTo(Scalar(64, 177, 0), 255-mask);
-    cv::cvtColor(rgb_down, outMat, cv::COLOR_BGR2GRAY);
-		grayMat.copyTo(outMat, mask);
-
-    if(steps){
-      cv::imshow("masked", rgb_down);
-      cv::waitKey(1);
-    }
+    		rgb_down.setTo(Scalar(64, 177, 0), 255-mask);
+    		cv::cvtColor(rgb_down, outMat, cv::COLOR_BGR2GRAY);
 
 		//find edges and contours
-		cv::medianBlur(outMat, outMat, 3);
-		if(expected){
-			resized = outMat(rec);
-			cv::Canny(resized, cannyResult, c_lower_thres, c_upper_thres, 3);
+		cv::medianBlur(finalResized, finalResized, 3);
+		if(was_expected){
+			Mat roi = finalResized(rec);
+			cv::Canny(roi, cannyResult, c_lower_thres, c_upper_thres, 3);
 		}else{
-			cv::Canny(outMat, cannyResult, c_lower_thres, c_upper_thres, 3);
+    			cv::Canny(finalResized, cannyResult, c_lower_thres, c_upper_thres, 3);
 		}
-		cv::findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1, cv::Point(0,0));
+    		cv::findContours(cannyResult, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_TC89_L1, cv::Point(0,0));
 		flat_contours = drop_contours_1d(contours, contour_drop);
 		int old_size = flat_contours.size();
-
-    if(steps){
-      //cv::imshow("outMat",outMat);
-      //cv::imshow("resized", resized);
-      cv::imshow("edges", cannyResult);
-      cv::waitKey(1);
-    }
 
 		// Duplicate edges randomly for better outlines
 		for(int i=0; i < old_size; i++) {
@@ -469,11 +475,13 @@ int main(int argc, char **argv) {
 		}
 
 		if(steps){
-			cv::imshow("rgb", rgbIn);
-			cv::waitKey(1);
-			cv::imshow("masked", rgb_down);
-			cv::waitKey(1);
+			//cv::imshow("rgb", cropRgbIn);
+			//cv::waitKey(1);
+			//cv::imshow("masked", outMat);
+			//cv::waitKey(1);
 			cv::imshow("edges", cannyResult);
+			cv::waitKey(1);
+			cv::imshow("resized", finalResized);
 			cv::waitKey(1);
 		}
 
@@ -501,20 +509,27 @@ int main(int argc, char **argv) {
 
 		//flatten contours and add as "flowers" to bee_handle
 		//bee_handle.add_flowers(flat_contours);
-		
-		
-    		
-		if(was_expected==true && expected==false){
+
+		if(was_expected){
 			count_frames--;
-		}else{
-			flat_contours.insert(flat_contours.end(), captured_flat_contours.begin(), captured_flat_contours.end());
+			
+		}
+		if(count_frames==0 && was_expected ==true){
+			was_expected = false;
+			decrement = true;
+		}
+		if(decrement==false){
 			bee_handle.addAttractorsAvg(flat_contours);
+		}else{
+			frame_counter--;
 		}
-		if(count_frames==0){
-		        was_expected = false;
-			count_frames = 30;
+		if(frame_counter==0){
+			decrement = false;
+			frame_counter = 50;
 		}
-		
+
+		//added below 1 line
+		//bee_handle.addAttractorsAvg(flat_contours);
 		bee_handle.updatePoints();
 
 
@@ -601,10 +616,10 @@ int main(int argc, char **argv) {
 		}
 
 		iterations++;
-		LOG(INFO)<<"frames: "<<iterations<<endl;
+		//LOG(INFO)<<"frames: "<<iterations<<endl;
 	}while(!gm.should_close());
 
-	
+
 
 	//output the results of our timing
 	if(time_it){

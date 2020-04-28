@@ -378,8 +378,8 @@ void detect(cv::Rect &rec, unique_ptr<tensorflow::Session> &session2, Mat &image
     cv::resize(roi,resized,Size(columnResized,rowResized));
     //cv::medianBlur(resized, resized, 7);
     //cv::imshow("roi",roi);
-    cv::imshow("resized",resized);
-
+    //cv::imshow("resized",resized);
+	
     int depth = 3;
     tensorflow::TensorShape shape = tensorflow::TensorShape();
     shape.AddDim(1);
