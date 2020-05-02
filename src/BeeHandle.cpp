@@ -44,14 +44,14 @@ static void UpdateAttractorMatrix(int start_idx, int end_idx, int avgPercent, in
 		int pointIdx = attractorMatrix[x][y].pointIdx;
 		int score = attractorMatrix[x][y].score;
 
-		if (pointIdx == -1 && score > (avgPercent * attractorHistory.size())) {
+		if (pointIdx == -1 && score > (avgPercent * ((int)attractorHistory.size()))) {
 			// Save the bee to that position, don't move the bee
 			attractorMatrix[x][y].pointIdx = P_idx;
 		}
 	}
 }
 
-static void movePoint(int start_idx, int end_idx, int randomFactor, int stepSize, int xWidth, int yWidth) {
+/*static void movePoint(int start_idx, int end_idx, int randomFactor, int stepSize, int xWidth, int yWidth) {
 	for (int P_idx = start_idx; P_idx < end_idx; P_idx++) {
 		if (attractorMatrix[staticPoints[P_idx].x][staticPoints[P_idx].y].pointIdx != P_idx) {
 			float dist_x, dist_y;
@@ -84,7 +84,7 @@ static void movePoint(int start_idx, int end_idx, int randomFactor, int stepSize
 			}
 		}
 	}
-}
+}*/
 
 static void removeLastFrame(int start_idx, int end_idx, double avgPercent) {
 	for (int i = start_idx; i < end_idx; i++) {
@@ -105,8 +105,8 @@ BeeHandle::BeeHandle(int xwidth, int ywidth, int stepsize, double randomfactor, 
 	storedFrames = stored_frames;
 	attractorMatrix = vector<vector<Attractor>>(xWidth, vector<Attractor>(yWidth, Attractor(0, 0)));
 	soundDivisor = sound_divisor;
-	for (int i = 0; i < attractorMatrix.size(); i++) {
-		for (int j = 0; j < attractorMatrix[0].size(); j++) {
+	for (unsigned int i = 0; i < attractorMatrix.size(); i++) {
+		for (unsigned int j = 0; j < attractorMatrix[0].size(); j++) {
 			attractorMatrix[i][j].x = i;
 			attractorMatrix[i][j].y = j;
 		}
@@ -120,19 +120,19 @@ BeeHandle::BeeHandle(int xwidth, int ywidth, int stepsize, double randomfactor, 
 
 void BeeHandle::movePoints() {
 	if(points.size() > dirs.size()){
-		for(int i = dirs.size(); i < points.size(); i++){
+		for(unsigned int i = dirs.size(); i < points.size(); i++){
 			dirs.push_back(0);
 		}
 	}
 	if(points.size()/soundDivisor > landed.size()){
-		for(int i = landed.size(); i < points.size()/soundDivisor; i++){
+		for(unsigned int i = landed.size(); i < points.size()/soundDivisor; i++){
 			landed.push_back(0);
 			sudo_landed.push_back(0);
 		}
 	}
-	for (int P_idx = 0; P_idx < points.size(); P_idx++) {
+	for (int P_idx = 0; P_idx < ((int)points.size()); P_idx++) {
 		if (attractorMatrix[points[P_idx].x][points[P_idx].y].pointIdx == P_idx){
-			if(P_idx < points.size()/soundDivisor){
+			if(P_idx < ((int)points.size())/soundDivisor){
 				if(sudo_landed[P_idx] == 0){
 					landed[P_idx] = 1;
 					sudo_landed[P_idx] = 1;
@@ -143,7 +143,7 @@ void BeeHandle::movePoints() {
 			}
 		}
 		else {
-			if(P_idx < points.size()/soundDivisor){
+			if(P_idx < ((int)points.size())/soundDivisor){
 				landed[P_idx] = 0;
 				sudo_landed[P_idx] = 0;
 			}
@@ -208,8 +208,8 @@ void BeeHandle::updatePoints() {
 		int start;
 		int end;
 		// If there are less than 3 candidates in a thread, there is no point of multithreading
-		if (points.size() < numThreads) {
-			if (i < points.size()) {
+		if (points.size() < ((unsigned int)numThreads)) {
+			if (i < ((int)points.size())) {
 				start = i;
 				end = i + 1;
 				//UpdateAttractorMatrix(points, start, end, avgPercent, storedFrames);
@@ -234,7 +234,7 @@ void BeeHandle::updatePoints() {
 		}
 	}
 
-	for (int j = 0; j < threads_update.size(); j++) {
+	for (unsigned int j = 0; j < threads_update.size(); j++) {
 		threads_update[j].join();
 	}
 
@@ -328,7 +328,7 @@ void BeeHandle::addAttractorsAvg(vector<cv::Point> new_attractors) {
 	}*/
 
 
-	if (attractorHistory.size() > storedFrames) {
+	if (((int)attractorHistory.size()) > storedFrames) {
 		vector<thread> threads;
 		int subSize = attractorHistory[0].size() / this->numThreads;
 		int subRem = attractorHistory[0].size() % this->numThreads;
@@ -337,8 +337,8 @@ void BeeHandle::addAttractorsAvg(vector<cv::Point> new_attractors) {
 			int start;
 			int end;
 			// If there are less than 3 candidates in a thread, there is no point of multithreading
-			if (attractorHistory[0].size() < numThreads) {
-				if (i < attractorHistory[0].size()) {
+			if (((int)attractorHistory[0].size()) < numThreads) {
+				if (i < ((int)attractorHistory[0].size())) {
 					start = i;
 					end = i + 1;
 					//UpdateAttractorMatrix(points, start, end, avgPercent, storedFrames);
@@ -363,7 +363,7 @@ void BeeHandle::addAttractorsAvg(vector<cv::Point> new_attractors) {
 			}
 		}
 
-		for (int j = 0; j < threads.size(); j++) {
+		for (int j = 0; j < ((int)threads.size()); j++) {
 			threads[j].join();
 		}
 
