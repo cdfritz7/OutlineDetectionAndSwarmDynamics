@@ -27,6 +27,24 @@
 #include "tensorflow/core/public/session.h"
 #include "tensorflow/core/util/command_line_flags.h"
 
+#include <iostream>
+#include <chrono>
+
+class Timer
+{
+public:
+    Timer() : beg_(clock_::now()) {}
+    void reset() { beg_ = clock_::now(); }
+    double elapsed() const { 
+        return std::chrono::duration_cast<second_>
+            (clock_::now() - beg_).count(); }
+
+private:
+    typedef std::chrono::high_resolution_clock clock_;
+    typedef std::chrono::duration<double, std::ratio<1> > second_;
+    std::chrono::time_point<clock_> beg_;
+};
+
 using namespace cv;
 using namespace std;
 
@@ -323,8 +341,15 @@ int main(int argc, char **argv) {
   }
   //cv::waitKey(0);
 
-	if(time_it)
+	if(time_it) {
 		time_start = chrono::high_resolution_clock::now();
+	}
+	Timer timer;
+	double gesture_total_secs = 0.0;
+	double edge_detect_total_secs = 0.0;
+	double bee_dynamics_total_secs = 0.0;
+	double sound_total_secs = 0.0;
+	double graphics_total_secs = 0.0;
 
 	//main loop
   do {
@@ -361,8 +386,9 @@ int main(int argc, char **argv) {
 		//gesture detection
 		Rect rec;
 
-		//LOG(INFO)<<"show captured"<<endl;
-
+		//LOG(INFO)<<"show captured"<<endl;		
+		
+		timer.reset();
 		if(iterations%15==0 && gesture==true) {
 			cvtColor(rgb_down, rgb_down, COLOR_BGR2RGB);
 
@@ -403,8 +429,9 @@ int main(int argc, char **argv) {
 				count_frames = 30;
 			}
 		}
-
+		gesture_total_secs+=timer.elapsed();
 		
+		timer.reset();
 		//resize input image and depth for decreased computation
 		cv::resize(cropRgbIn, rgb_down, Size(down_width, down_height));
 		cv::resize(cropDepthIn, depth_down, Size(down_width, down_height));
@@ -472,6 +499,7 @@ int main(int argc, char **argv) {
 		if(time_it){
 			bee_start = chrono::high_resolution_clock::now();
 		}
+		edge_detect_total_secs += timer.elapsed();
 
     //if(1000 > contour_count){
       //printf("%d\n", contour_count);
@@ -492,7 +520,7 @@ int main(int argc, char **argv) {
 
 		//flatten contours and add as "flowers" to bee_handle
 		//bee_handle.add_flowers(flat_contours);
-
+		timer.reset();
 		if(was_expected){
 			count_frames--;
 			
@@ -529,6 +557,8 @@ int main(int argc, char **argv) {
     //combined.insert(combined.end(), bh_points.begin(), bh_points.end());
     //bee_positions = combined;
     bee_dir = bee_handle.get_dirs();
+    bee_dynamics_total_secs += timer.elapsed();
+    timer.reset();
     bee_landed = bee_handle.get_landed();
     for(int i = 0; i < num_bees/sound_divisor; i++){
       if(bee_landed[i] == 1){
@@ -563,6 +593,8 @@ int main(int argc, char **argv) {
       }
 
     }
+	sound_total_secs += timer.elapsed();
+	timer.reset();
 
 		//update our graphics module
 		for(int i = 0; i < num_bees; i++){
@@ -572,6 +604,7 @@ int main(int argc, char **argv) {
 			//bee_dir[i] = (bee_dir[i]+1)%8;
 		}
 		gm.update_particles(bee_x, bee_y, bee_stage, bee_dir);
+		graphics_total_secs += timer.elapsed();
 		display_qr = gm.update_display(true) || display_qr;
 
 		//updates for qr code
@@ -610,6 +643,12 @@ int main(int argc, char **argv) {
 		cout<<"Percentage bee module: "<<100*(float)bee_total/total.count()<<"%\n";
 		cout<<"Percentage edge module: "<<100*(float)(total.count()-bee_total)/total.count()<<"%\n";
 	}
+	cout << "=== Time Report ===" << endl;
+	cout << "gesture detection: " <<gesture_total_secs <<" s" << endl;
+	cout << "edge detection: " <<edge_detect_total_secs <<" s" << endl;
+	cout << "bee dynamics: " <<bee_dynamics_total_secs <<" s" << endl;
+	cout << "sound: " <<sound_total_secs <<" s" << endl;
+	cout << "graphics: " <<graphics_total_secs <<" s" << endl;
 
 	//clean up everything we have
 	audio.delete_sources();
