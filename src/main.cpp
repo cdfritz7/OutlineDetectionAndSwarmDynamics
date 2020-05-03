@@ -131,7 +131,7 @@ int main(int argc, char **argv) {
   int c_lower_thres = 50; //lower threshold for canny edge detection
   int c_upper_thres = 100;  //upper thrshold for canny edge detection
   int step_size = 3;
-  bool gesture = false;
+  bool gesture = true;
   int frame_counter = 50;
   int count_frames = 0;
 

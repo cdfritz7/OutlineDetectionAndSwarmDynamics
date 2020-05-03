@@ -9,3 +9,15 @@ bee dynamics: 20.4243 s
 sound: 0.00386857 s
 graphics: 0.278528 s
 
+frames: 356
+Frames per second: 16.125
+Percentage bee module: 52.2341%
+Percentage edge module: 47.7659%
+=== Time Report ===
+gesture detection: 4.40055 s
+edge detection: 1.71759 s
+bee dynamics: 10.2859 s
+sound: 0.00271357 s
+graphics: 0.247561 s
+
+
